@@ -30,7 +30,7 @@ A few notes on the EthereumRuntimeApi's runtime implementation requirements:
 - For supporting author rpc call, the FindAuthor trait must be implemented in an
 arbitrary struct. This implementation must call the authorities accessor in either
 Aura or Babe and convert the authority id response to H160 using
-pallet_evm::HashTruncateConvertAccountId::convert_account_id.
+pallet_vm::HashTruncateConvertAccountId::convert_account_id.
 
 The struct implementing FindAuthor is passed as the FindAuthor associated type's
 value for pallet_ethereum.

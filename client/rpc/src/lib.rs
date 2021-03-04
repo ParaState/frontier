@@ -30,7 +30,7 @@ use ethereum::{
 };
 use jsonrpc_core::{ErrorCode, Error, Value};
 use rustc_hex::ToHex;
-use pallet_evm::ExitReason;
+use pallet_vm::ExitReason;
 use sha3::{Digest, Keccak256};
 
 pub fn internal_err<T: ToString>(message: T) -> Error {

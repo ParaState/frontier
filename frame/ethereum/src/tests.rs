@@ -68,7 +68,7 @@ fn transaction_should_increment_nonce() {
 			t.action,
 			None,
 		));
-		assert_eq!(Evm::account_basic(&alice.address).nonce, U256::from(1));
+		assert_eq!(VM::account_basic(&alice.address).nonce, U256::from(1));
 	});
 }
 
@@ -147,7 +147,7 @@ fn contract_constructor_should_get_executed() {
 			t.action,
 			None,
 		));
-		assert_eq!(Evm::account_storages(
+		assert_eq!(VM::account_storages(
 			erc20_address, alice_storage_address
 		), H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap())
 	});
@@ -168,7 +168,7 @@ fn source_should_be_derived_from_signature() {
 		).expect("Failed to execute transaction");
 
 		// We verify the transaction happened with alice account.
-		assert_eq!(Evm::account_storages(
+		assert_eq!(VM::account_storages(
 			erc20_address, alice_storage_address
 		), H256::from_str("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap())
 
@@ -209,7 +209,7 @@ fn contract_should_be_created_at_given_address() {
 			t.action,
 			None,
 		));
-		assert_ne!(Evm::account_codes(erc20_address).len(), 0);
+		assert_ne!(VM::account_codes(erc20_address).len(), 0);
 	});
 }
 

@@ -38,8 +38,8 @@ use sp_runtime::{
 	generic::DigestItem, traits::UniqueSaturatedInto, DispatchError,
 };
 use evm::ExitReason;
-use fp_evm::CallOrCreateInfo;
-use pallet_evm::{Runner, GasWeightMapping};
+use fp_vm::CallOrCreateInfo;
+use pallet_vm::{Runner, GasWeightMapping};
 use sha3::{Digest, Keccak256};
 use codec::{Encode, Decode};
 use fp_consensus::{FRONTIER_ENGINE_ID, ConsensusLog};
@@ -72,7 +72,7 @@ impl Get<H256> for IntermediateStateRoot {
 }
 
 /// Configuration trait for Ethereum pallet.
-pub trait Config: frame_system::Config<Hash=H256> + pallet_balances::Config + pallet_timestamp::Config + pallet_evm::Config {
+pub trait Config: frame_system::Config<Hash=H256> + pallet_balances::Config + pallet_timestamp::Config + pallet_vm::Config {
 	/// The overarching event type.
 	type Event: From<Event> + Into<<Self as frame_system::Config>::Event>;
 	/// Find author for Ethereum.
@@ -126,7 +126,7 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Transact an Ethereum transaction.
-		#[weight = <T as pallet_evm::Config>::GasWeightMapping::gas_to_weight(transaction.gas_limit.unique_saturated_into())]
+		#[weight = <T as pallet_vm::Config>::GasWeightMapping::gas_to_weight(transaction.gas_limit.unique_saturated_into())]
 		fn transact(origin, transaction: ethereum::Transaction) -> DispatchResultWithPostInfo {
 			ensure_none(origin)?;
 
@@ -239,7 +239,7 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			let origin = Self::recover_signer(&transaction)
 				.ok_or_else(|| InvalidTransaction::Custom(TransactionValidationError::InvalidSignature as u8))?;
 
-			let account_data = pallet_evm::Module::<T>::account_basic(&origin);
+			let account_data = pallet_vm::Module::<T>::account_basic(&origin);
 
 			if transaction.nonce < account_data.nonce {
 				return InvalidTransaction::Stale.into();
