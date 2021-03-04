@@ -51,17 +51,17 @@ impl Default for TransactionStatus {
 sp_api::decl_runtime_apis! {
 	/// API necessary for Ethereum-compatibility layer.
 	pub trait EthereumRuntimeRPCApi {
-		/// Returns runtime defined pallet_evm::ChainId.
+		/// Returns runtime defined pallet_vm::ChainId.
 		fn chain_id() -> u64;
-		/// Returns pallet_evm::Accounts by address.
-		fn account_basic(address: H160) -> fp_evm::Account;
+		/// Returns pallet_vm::Accounts by address.
+		fn account_basic(address: H160) -> fp_vm::Account;
 		/// Returns FixedGasPrice::min_gas_price
 		fn gas_price() -> U256;
-		/// For a given account address, returns pallet_evm::AccountCodes.
+		/// For a given account address, returns pallet_vm::AccountCodes.
 		fn account_code_at(address: H160) -> Vec<u8>;
 		/// Returns the converted FindAuthor::find_author authority id.
 		fn author() -> H160;
-		/// For a given account address and index, returns pallet_evm::AccountStorages.
+		/// For a given account address and index, returns pallet_vm::AccountStorages.
 		fn storage_at(address: H160, index: U256) -> H256;
 		/// Returns a frame_ethereum::call response. If `estimate` is true,
 		fn call(
@@ -73,7 +73,7 @@ sp_api::decl_runtime_apis! {
 			gas_price: Option<U256>,
 			nonce: Option<U256>,
 			estimate: bool,
-		) -> Result<fp_evm::CallInfo, sp_runtime::DispatchError>;
+		) -> Result<fp_vm::CallInfo, sp_runtime::DispatchError>;
 		/// Returns a frame_ethereum::create response.
 		fn create(
 			from: H160,
@@ -83,7 +83,7 @@ sp_api::decl_runtime_apis! {
 			gas_price: Option<U256>,
 			nonce: Option<U256>,
 			estimate: bool,
-		) -> Result<fp_evm::CreateInfo, sp_runtime::DispatchError>;
+		) -> Result<fp_vm::CreateInfo, sp_runtime::DispatchError>;
 		/// Return the current block.
 		fn current_block() -> Option<EthereumBlock>;
 		/// Return the current receipt.

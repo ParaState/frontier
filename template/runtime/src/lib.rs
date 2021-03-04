@@ -42,8 +42,8 @@ pub use frame_support::{
 	},
 	ConsensusEngineId,
 };
-use pallet_evm::{
-	Account as EVMAccount, FeeCalculator, HashedAddressMapping,
+use pallet_vm::{
+	Account as ETHAccount, FeeCalculator, HashedAddressMapping,
 	EnsureAddressTruncated, Runner,
 };
 use fp_rpc::TransactionStatus;
@@ -275,7 +275,7 @@ parameter_types! {
 	pub const ChainId: u64 = 123;
 }
 
-impl pallet_evm::Config for Runtime {
+impl pallet_vm::Config for Runtime {
 	type FeeCalculator = FixedGasPrice;
 	type GasWeightMapping = ();
 	type CallOrigin = EnsureAddressTruncated;
@@ -283,12 +283,12 @@ impl pallet_evm::Config for Runtime {
 	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
 	type Currency = Balances;
 	type Event = Event;
-	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type Runner = pallet_vm::runner::stack::Runner<Self>;
 	type Precompiles = (
-		pallet_evm_precompile_simple::ECRecover,
-		pallet_evm_precompile_simple::Sha256,
-		pallet_evm_precompile_simple::Ripemd160,
-		pallet_evm_precompile_simple::Identity,
+		pallet_vm_precompile_simple::ECRecover,
+		pallet_vm_precompile_simple::Sha256,
+		pallet_vm_precompile_simple::Ripemd160,
+		pallet_vm_precompile_simple::Identity,
 	);
 	type ChainId = ChainId;
 }
@@ -334,7 +334,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		Ethereum: pallet_ethereum::{Module, Call, Storage, Event, Config, ValidateUnsigned},
-		EVM: pallet_evm::{Module, Config, Call, Storage, Event<T>},
+		VM: pallet_vm::{Module, Config, Call, Storage, Event<T>},
 	}
 );
 
@@ -466,19 +466,19 @@ impl_runtime_apis! {
 
 	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
 		fn chain_id() -> u64 {
-			<Runtime as pallet_evm::Config>::ChainId::get()
+			<Runtime as pallet_vm::Config>::ChainId::get()
 		}
 
-		fn account_basic(address: H160) -> EVMAccount {
-			EVM::account_basic(&address)
+		fn account_basic(address: H160) -> ETHAccount {
+			VM::account_basic(&address)
 		}
 
 		fn gas_price() -> U256 {
-			<Runtime as pallet_evm::Config>::FeeCalculator::min_gas_price()
+			<Runtime as pallet_vm::Config>::FeeCalculator::min_gas_price()
 		}
 
 		fn account_code_at(address: H160) -> Vec<u8> {
-			EVM::account_codes(address)
+			VM::account_codes(address)
 		}
 
 		fn author() -> H160 {
@@ -488,7 +488,7 @@ impl_runtime_apis! {
 		fn storage_at(address: H160, index: U256) -> H256 {
 			let mut tmp = [0u8; 32];
 			index.to_big_endian(&mut tmp);
-			EVM::account_storages(address, H256::from_slice(&tmp[..]))
+			VM::account_storages(address, H256::from_slice(&tmp[..]))
 		}
 
 		fn call(
@@ -500,16 +500,16 @@ impl_runtime_apis! {
 			gas_price: Option<U256>,
 			nonce: Option<U256>,
 			estimate: bool,
-		) -> Result<pallet_evm::CallInfo, sp_runtime::DispatchError> {
+		) -> Result<pallet_vm::CallInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
-				let mut config = <Runtime as pallet_evm::Config>::config().clone();
+				let mut config = <Runtime as pallet_vm::Config>::config().clone();
 				config.estimate = true;
 				Some(config)
 			} else {
 				None
 			};
 
-			<Runtime as pallet_evm::Config>::Runner::call(
+			<Runtime as pallet_vm::Config>::Runner::call(
 				from,
 				to,
 				data,
@@ -517,7 +517,7 @@ impl_runtime_apis! {
 				gas_limit.low_u64(),
 				gas_price,
 				nonce,
-				config.as_ref().unwrap_or(<Runtime as pallet_evm::Config>::config()),
+				config.as_ref().unwrap_or(<Runtime as pallet_vm::Config>::config()),
 			).map_err(|err| err.into())
 		}
 
@@ -529,23 +529,23 @@ impl_runtime_apis! {
 			gas_price: Option<U256>,
 			nonce: Option<U256>,
 			estimate: bool,
-		) -> Result<pallet_evm::CreateInfo, sp_runtime::DispatchError> {
+		) -> Result<pallet_vm::CreateInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
-				let mut config = <Runtime as pallet_evm::Config>::config().clone();
+				let mut config = <Runtime as pallet_vm::Config>::config().clone();
 				config.estimate = true;
 				Some(config)
 			} else {
 				None
 			};
 
-			<Runtime as pallet_evm::Config>::Runner::create(
+			<Runtime as pallet_vm::Config>::Runner::create(
 				from,
 				data,
 				value,
 				gas_limit.low_u64(),
 				gas_price,
 				nonce,
-				config.as_ref().unwrap_or(<Runtime as pallet_evm::Config>::config()),
+				config.as_ref().unwrap_or(<Runtime as pallet_vm::Config>::config()),
 			).map_err(|err| err.into())
 		}
 

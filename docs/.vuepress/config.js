@@ -16,11 +16,11 @@ module.exports = {
     editLinkText: '',
     lastUpdated: false,
     nav: [
-      { text: 'API reference', link: 'https://paritytech.github.io/frontier/rustdocs/pallet_evm' }
+      { text: 'API reference', link: 'https://paritytech.github.io/frontier/rustdocs/pallet_vm' }
     ],
     sidebar: [
       'overview',
-      'frame/evm',
+      'frame/vm',
       'frame/ethereum'
     ]
   },
