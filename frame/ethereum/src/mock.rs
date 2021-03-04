@@ -23,7 +23,7 @@ use ethereum::{TransactionAction, TransactionSignature};
 use frame_support::{
 	impl_outer_origin, parameter_types, ConsensusEngineId
 };
-use pallet_evm::{FeeCalculator, AddressMapping, EnsureAddressTruncated};
+use pallet_vm::{FeeCalculator, AddressMapping, EnsureAddressTruncated};
 use rlp::*;
 use sp_core::{H160, H256, U256};
 use sp_runtime::{
@@ -132,7 +132,7 @@ impl AddressMapping<AccountId32> for HashedAddressMapping {
 	}
 }
 
-impl pallet_evm::Config for Test {
+impl pallet_vm::Config for Test {
 	type FeeCalculator = FixedGasPrice;
 	type GasWeightMapping = ();
 	type CallOrigin = EnsureAddressTruncated;
@@ -141,7 +141,7 @@ impl pallet_evm::Config for Test {
 	type Currency = Balances;
 	type Event = ();
 	type Precompiles = ();
-	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type Runner = pallet_vm::runner::stack::Runner<Self>;
 	type ChainId = ChainId;
 }
 
@@ -159,7 +159,7 @@ impl Config for Test {
 pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type Ethereum = Module<Test>;
-pub type Evm = pallet_evm::Module<Test>;
+pub type VM = pallet_vm::Module<Test>;
 
 pub struct AccountInfo {
 	pub address: H160,
