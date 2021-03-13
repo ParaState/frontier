@@ -59,7 +59,7 @@ pub mod runner;
 pub use crate::runner::Runner;
 pub use fp_vm::{
 	Account, Log, Vicinity, ExecutionInfo, CallInfo, CreateInfo, Precompile,
-	PrecompileSet, LinearCostPrecompile,
+	PrecompileSet, LinearCostPrecompile, ExtendExitReason, EVMCStatusCode
 };
 pub use evm::{ExitReason, ExitSucceed, ExitError, ExitRevert, ExitFatal};
 
@@ -391,7 +391,10 @@ decl_module! {
 			)?;
 
 			match info.exit_reason {
-				ExitReason::Succeed(_) => {
+				ExtendExitReason::ExitReason(ExitReason::Succeed(_)) => {
+					Module::<T>::deposit_event(Event::<T>::Executed(target));
+				},
+				ExtendExitReason::EVMCStatusCode(EVMCStatusCode::EvmcSuccess) => {
 					Module::<T>::deposit_event(Event::<T>::Executed(target));
 				},
 				_ => {
@@ -431,7 +434,14 @@ decl_module! {
 
 			match info {
 				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
+					exit_reason: ExtendExitReason::ExitReason(ExitReason::Succeed(_)),
+					value: create_address,
+					..
+				} => {
+					Module::<T>::deposit_event(Event::<T>::Created(create_address));
+				},
+				CreateInfo {
+					exit_reason: ExtendExitReason::EVMCStatusCode(EVMCStatusCode::EvmcSuccess),
 					value: create_address,
 					..
 				} => {
@@ -479,7 +489,14 @@ decl_module! {
 
 			match info {
 				CreateInfo {
-					exit_reason: ExitReason::Succeed(_),
+					exit_reason: ExtendExitReason::ExitReason(ExitReason::Succeed(_)),
+					value: create_address,
+					..
+				} => {
+					Module::<T>::deposit_event(Event::<T>::Created(create_address));
+				},
+				CreateInfo {
+					exit_reason: ExtendExitReason::EVMCStatusCode(EVMCStatusCode::EvmcSuccess),
 					value: create_address,
 					..
 				} => {

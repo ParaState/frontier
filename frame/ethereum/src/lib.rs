@@ -38,7 +38,7 @@ use sp_runtime::{
 	generic::DigestItem, traits::UniqueSaturatedInto, DispatchError,
 };
 use evm::ExitReason;
-use fp_vm::CallOrCreateInfo;
+use fp_vm::{CallOrCreateInfo, ExtendExitReason, EVMCStatusCode};
 use pallet_vm::{Runner, GasWeightMapping};
 use sha3::{Digest, Keccak256};
 use codec::{Encode, Decode};
@@ -106,7 +106,7 @@ decl_event!(
 	/// Ethereum pallet events.
 	pub enum Event {
 		/// An ethereum transaction was successfully executed. [from, to/contract_address, transaction_hash, exit_reason]
-		Executed(H160, H160, H256, ExitReason),
+		Executed(H160, H160, H256, ExtendExitReason),
 	}
 );
 
@@ -190,10 +190,16 @@ decl_module! {
 
 			let receipt = ethereum::Receipt {
 				state_root: match reason {
-					ExitReason::Succeed(_) => H256::from_low_u64_be(1),
-					ExitReason::Error(_) => H256::from_low_u64_le(0),
-					ExitReason::Revert(_) => H256::from_low_u64_le(0),
-					ExitReason::Fatal(_) => H256::from_low_u64_le(0),
+					ExtendExitReason::ExitReason(ExitReason::Succeed(_)) => H256::from_low_u64_be(1),
+					ExtendExitReason::ExitReason(ExitReason::Error(_)) => H256::from_low_u64_le(0),
+					ExtendExitReason::ExitReason(ExitReason::Revert(_)) => H256::from_low_u64_le(0),
+					ExtendExitReason::ExitReason(ExitReason::Fatal(_)) => H256::from_low_u64_le(0),
+					ExtendExitReason::EVMCStatusCode(s) => {
+						match s {
+							EVMCStatusCode::EvmcSuccess => H256::from_low_u64_be(1),
+							_ => H256::from_low_u64_le(0),
+						}
+					}
 				},
 				used_gas,
 				logs_bloom: status.clone().logs_bloom,

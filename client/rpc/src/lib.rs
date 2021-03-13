@@ -30,7 +30,7 @@ use ethereum::{
 };
 use jsonrpc_core::{ErrorCode, Error, Value};
 use rustc_hex::ToHex;
-use pallet_vm::ExitReason;
+use pallet_vm::{ExtendExitReason, ExitReason};
 use sha3::{Digest, Keccak256};
 
 pub fn internal_err<T: ToString>(message: T) -> Error {
@@ -41,17 +41,17 @@ pub fn internal_err<T: ToString>(message: T) -> Error {
 	}
 }
 
-pub fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<(), Error> {
+pub fn error_on_execution_failure(reason: &ExtendExitReason, data: &[u8]) -> Result<(), Error> {
 	match reason {
-		ExitReason::Succeed(_) => Ok(()),
-		ExitReason::Error(e) => {
+		ExtendExitReason::ExitReason(ExitReason::Succeed(_)) => Ok(()),
+		ExtendExitReason::ExitReason(ExitReason::Error(e)) => {
 			Err(Error {
 				code: ErrorCode::InternalError,
 				message: format!("evm error: {:?}", e),
 				data: Some(Value::String("0x".to_string()))
 			})
 		},
-		ExitReason::Revert(_) => {
+		ExtendExitReason::ExitReason(ExitReason::Revert(_)) => {
 			let mut message = "VM Exception while processing transaction: revert".to_string();
 			// A minimum size of error function selector (4) + offset (32) + string length (32)
 			// should contain a utf-8 encoded revert reason.
@@ -68,13 +68,22 @@ pub fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()
 				data: Some(Value::String(data.to_hex()))
 			})
 		},
-		ExitReason::Fatal(e) => {
+		ExtendExitReason::ExitReason(ExitReason::Fatal(e)) => {
 			Err(Error {
 				code: ErrorCode::InternalError,
 				message: format!("evm fatal: {:?}", e),
 				data: Some(Value::String("0x".to_string()))
 			})
 		},
+		#[cfg(feature = "std")]
+		ExtendExitReason::EVMCStatusCode(status) => {
+			match status {
+				EVMCStatusCode::EvmcSuccess => Ok(()),
+				// FixMe: handle EVMC vm fail cases
+				_ => Ok(()),
+			}
+		},
+		_ => Ok(()),
 	}
 }
 
