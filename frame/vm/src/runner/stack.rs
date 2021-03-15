@@ -285,7 +285,7 @@ impl<T: Config> Runner<T> {
 
 		Ok((
 			output,
-			ExtendExitReason::EVMCStatusCode(status_code.try_into().unwrap()),
+			ExtendExitReason::EVMCStatusCode(status_code.into()),
 			U256::from(used_gas),
 			state.substate.logs
 		))
@@ -806,9 +806,9 @@ impl<'vicinity, 'config, T: Config> HostInterface for VmStackState<'vicinity, 'c
 							ExitError::CreateContractLimit => StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE,
 							ExitError::OutOfOffset         => StatusCode::EVMC_FAILURE,
 							ExitError::OutOfGas            => StatusCode::EVMC_OUT_OF_GAS,
-							ExitError::OutOfFund           => StatusCode::EVMC_REJECTED,
+							ExitError::OutOfFund           => StatusCode::EVMC_FAILURE,
 							ExitError::PCUnderflow         => StatusCode::EVMC_FAILURE,
-							ExitError::CreateEmpty         => StatusCode::EVMC_UNDEFINED_INSTRUCTION,
+							ExitError::CreateEmpty         => StatusCode::EVMC_FAILURE,
 							_                              => StatusCode::EVMC_FAILURE,
 						}
 					}
@@ -853,7 +853,7 @@ impl<'vicinity, 'config, T: Config> HostInterface for VmStackState<'vicinity, 'c
 	    		Ok(info) => {
 	    			match &info.exit_reason {
 	    				ExtendExitReason::ExitReason(reason) => reason2status(reason),
-	        		ExtendExitReason::EVMCStatusCode(status) => status.to_owned().try_into().unwrap()
+	        		ExtendExitReason::EVMCStatusCode(status) => status.to_owned().into()
 	        	}
 	        },
 	        Err(_) => StatusCode::EVMC_FAILURE,
