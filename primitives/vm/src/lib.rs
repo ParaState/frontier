@@ -23,7 +23,7 @@ use codec::{Encode, Decode};
 #[cfg(feature = "std")]
 use serde::{Serialize, Deserialize};
 use sp_std::vec::Vec;
-use sp_std::convert::TryFrom;
+use sp_std::convert::From;
 use sp_core::{U256, H160};
 pub use evm::{ExitReason, ExitSucceed, ExitError, ExitFatal, ExitRevert};
 #[cfg(feature = "std")]
@@ -68,61 +68,89 @@ pub enum EVMCStatusCode {
 }
 
 #[cfg(feature = "std")]
-impl TryFrom<EVMCStatusCode> for StatusCode {
-	type Error = ();
-
-	fn try_from(s: EVMCStatusCode) -> Result<Self, Self::Error> {
+impl From<EVMCStatusCode> for StatusCode {
+	fn from(s: EVMCStatusCode) -> Self {
 		match s {
-			EVMCStatusCode::EvmcSuccess                    => Ok(StatusCode::EVMC_SUCCESS),
-			EVMCStatusCode::EvmcFailure                    => Ok(StatusCode::EVMC_FAILURE),
-			EVMCStatusCode::EvmcRevert                     => Ok(StatusCode::EVMC_REVERT),
-			EVMCStatusCode::EvmcOutOfGas                   => Ok(StatusCode::EVMC_OUT_OF_GAS),
-			EVMCStatusCode::EvmcInvalidInstruction         => Ok(StatusCode::EVMC_INVALID_INSTRUCTION),
-			EVMCStatusCode::EvmcUndefinedInstruction       => Ok(StatusCode::EVMC_UNDEFINED_INSTRUCTION),
-			EVMCStatusCode::EvmcStackOverflow              => Ok(StatusCode::EVMC_STACK_OVERFLOW),
-			EVMCStatusCode::EvmcStackUnderflow             => Ok(StatusCode::EVMC_STACK_UNDERFLOW),
-			EVMCStatusCode::EvmcBadJumpDestination         => Ok(StatusCode::EVMC_BAD_JUMP_DESTINATION),
-			EVMCStatusCode::EvmcInvalidMemoryAccess        => Ok(StatusCode::EVMC_INVALID_MEMORY_ACCESS),
-			EVMCStatusCode::EvmcCallDepthExceeded          => Ok(StatusCode::EVMC_CALL_DEPTH_EXCEEDED),
-			EVMCStatusCode::EvmcStaticModeViolation        => Ok(StatusCode::EVMC_STATIC_MODE_VIOLATION),
-			EVMCStatusCode::EvmcPrecompileFailure          => Ok(StatusCode::EVMC_PRECOMPILE_FAILURE),
-			EVMCStatusCode::EvmcContractValidationFailure  => Ok(StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE),
-			EVMCStatusCode::EvmcArgumentOutOfRange         => Ok(StatusCode::EVMC_ARGUMENT_OUT_OF_RANGE),
-			EVMCStatusCode::EvmcWasmUnreachableInstruction => Ok(StatusCode::EVMC_WASM_UNREACHABLE_INSTRUCTION),
-			EVMCStatusCode::EvmcWasmTrap                   => Ok(StatusCode::EVMC_WASM_TRAP),
-			EVMCStatusCode::EvmcInternalError              => Ok(StatusCode::EVMC_INTERNAL_ERROR),
-			EVMCStatusCode::EvmcRejected                   => Ok(StatusCode::EVMC_REJECTED),
-			EVMCStatusCode::EvmcOutOfMemory                => Ok(StatusCode::EVMC_OUT_OF_MEMORY),
+			EVMCStatusCode::EvmcSuccess                    => StatusCode::EVMC_SUCCESS,
+			EVMCStatusCode::EvmcFailure                    => StatusCode::EVMC_FAILURE,
+			EVMCStatusCode::EvmcRevert                     => StatusCode::EVMC_REVERT,
+			EVMCStatusCode::EvmcOutOfGas                   => StatusCode::EVMC_OUT_OF_GAS,
+			EVMCStatusCode::EvmcInvalidInstruction         => StatusCode::EVMC_INVALID_INSTRUCTION,
+			EVMCStatusCode::EvmcUndefinedInstruction       => StatusCode::EVMC_UNDEFINED_INSTRUCTION,
+			EVMCStatusCode::EvmcStackOverflow              => StatusCode::EVMC_STACK_OVERFLOW,
+			EVMCStatusCode::EvmcStackUnderflow             => StatusCode::EVMC_STACK_UNDERFLOW,
+			EVMCStatusCode::EvmcBadJumpDestination         => StatusCode::EVMC_BAD_JUMP_DESTINATION,
+			EVMCStatusCode::EvmcInvalidMemoryAccess        => StatusCode::EVMC_INVALID_MEMORY_ACCESS,
+			EVMCStatusCode::EvmcCallDepthExceeded          => StatusCode::EVMC_CALL_DEPTH_EXCEEDED,
+			EVMCStatusCode::EvmcStaticModeViolation        => StatusCode::EVMC_STATIC_MODE_VIOLATION,
+			EVMCStatusCode::EvmcPrecompileFailure          => StatusCode::EVMC_PRECOMPILE_FAILURE,
+			EVMCStatusCode::EvmcContractValidationFailure  => StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE,
+			EVMCStatusCode::EvmcArgumentOutOfRange         => StatusCode::EVMC_ARGUMENT_OUT_OF_RANGE,
+			EVMCStatusCode::EvmcWasmUnreachableInstruction => StatusCode::EVMC_WASM_UNREACHABLE_INSTRUCTION,
+			EVMCStatusCode::EvmcWasmTrap                   => StatusCode::EVMC_WASM_TRAP,
+			EVMCStatusCode::EvmcInternalError              => StatusCode::EVMC_INTERNAL_ERROR,
+			EVMCStatusCode::EvmcRejected                   => StatusCode::EVMC_REJECTED,
+			EVMCStatusCode::EvmcOutOfMemory                => StatusCode::EVMC_OUT_OF_MEMORY,
 		}
 	}
 }
 
 #[cfg(feature = "std")]
-	impl TryFrom<StatusCode> for EVMCStatusCode {
-	type Error = ();
-
-	fn try_from(s: StatusCode) -> Result<Self, Self::Error> {
+impl From<StatusCode> for EVMCStatusCode {
+	fn from(s: StatusCode) -> Self {
 		match s {
-			StatusCode::EVMC_SUCCESS                      => Ok(EVMCStatusCode::EvmcSuccess),
-			StatusCode::EVMC_FAILURE                      => Ok(EVMCStatusCode::EvmcFailure),
-			StatusCode::EVMC_REVERT                       => Ok(EVMCStatusCode::EvmcRevert),
-			StatusCode::EVMC_OUT_OF_GAS                   => Ok(EVMCStatusCode::EvmcOutOfGas),
-			StatusCode::EVMC_INVALID_INSTRUCTION          => Ok(EVMCStatusCode::EvmcInvalidInstruction),
-			StatusCode::EVMC_UNDEFINED_INSTRUCTION        => Ok(EVMCStatusCode::EvmcUndefinedInstruction),
-			StatusCode::EVMC_STACK_OVERFLOW               => Ok(EVMCStatusCode::EvmcUndefinedInstruction),
-			StatusCode::EVMC_STACK_UNDERFLOW              => Ok(EVMCStatusCode::EvmcStackUnderflow),
-			StatusCode::EVMC_BAD_JUMP_DESTINATION         => Ok(EVMCStatusCode::EvmcBadJumpDestination),
-			StatusCode::EVMC_INVALID_MEMORY_ACCESS        => Ok(EVMCStatusCode::EvmcInvalidMemoryAccess),
-			StatusCode::EVMC_CALL_DEPTH_EXCEEDED          => Ok(EVMCStatusCode::EvmcCallDepthExceeded),
-			StatusCode::EVMC_STATIC_MODE_VIOLATION        => Ok(EVMCStatusCode::EvmcStaticModeViolation),
-			StatusCode::EVMC_PRECOMPILE_FAILURE           => Ok(EVMCStatusCode::EvmcPrecompileFailure),
-			StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE  => Ok(EVMCStatusCode::EvmcContractValidationFailure),
-			StatusCode::EVMC_ARGUMENT_OUT_OF_RANGE        => Ok(EVMCStatusCode::EvmcArgumentOutOfRange),
-			StatusCode::EVMC_WASM_UNREACHABLE_INSTRUCTION => Ok(EVMCStatusCode::EvmcWasmUnreachableInstruction),
-			StatusCode::EVMC_WASM_TRAP                    => Ok(EVMCStatusCode::EvmcWasmTrap),
-			StatusCode::EVMC_INTERNAL_ERROR               => Ok(EVMCStatusCode::EvmcInternalError),
-			StatusCode::EVMC_REJECTED                     => Ok(EVMCStatusCode::EvmcRejected),
-			StatusCode::EVMC_OUT_OF_MEMORY                => Ok(EVMCStatusCode::EvmcOutOfMemory),
+			StatusCode::EVMC_SUCCESS                      => EVMCStatusCode::EvmcSuccess,
+			StatusCode::EVMC_FAILURE                      => EVMCStatusCode::EvmcFailure,
+			StatusCode::EVMC_REVERT                       => EVMCStatusCode::EvmcRevert,
+			StatusCode::EVMC_OUT_OF_GAS                   => EVMCStatusCode::EvmcOutOfGas,
+			StatusCode::EVMC_INVALID_INSTRUCTION          => EVMCStatusCode::EvmcInvalidInstruction,
+			StatusCode::EVMC_UNDEFINED_INSTRUCTION        => EVMCStatusCode::EvmcUndefinedInstruction,
+			StatusCode::EVMC_STACK_OVERFLOW               => EVMCStatusCode::EvmcUndefinedInstruction,
+			StatusCode::EVMC_STACK_UNDERFLOW              => EVMCStatusCode::EvmcStackUnderflow,
+			StatusCode::EVMC_BAD_JUMP_DESTINATION         => EVMCStatusCode::EvmcBadJumpDestination,
+			StatusCode::EVMC_INVALID_MEMORY_ACCESS        => EVMCStatusCode::EvmcInvalidMemoryAccess,
+			StatusCode::EVMC_CALL_DEPTH_EXCEEDED          => EVMCStatusCode::EvmcCallDepthExceeded,
+			StatusCode::EVMC_STATIC_MODE_VIOLATION        => EVMCStatusCode::EvmcStaticModeViolation,
+			StatusCode::EVMC_PRECOMPILE_FAILURE           => EVMCStatusCode::EvmcPrecompileFailure,
+			StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE  => EVMCStatusCode::EvmcContractValidationFailure,
+			StatusCode::EVMC_ARGUMENT_OUT_OF_RANGE        => EVMCStatusCode::EvmcArgumentOutOfRange,
+			StatusCode::EVMC_WASM_UNREACHABLE_INSTRUCTION => EVMCStatusCode::EvmcWasmUnreachableInstruction,
+			StatusCode::EVMC_WASM_TRAP                    => EVMCStatusCode::EvmcWasmTrap,
+			StatusCode::EVMC_INTERNAL_ERROR               => EVMCStatusCode::EvmcInternalError,
+			StatusCode::EVMC_REJECTED                     => EVMCStatusCode::EvmcRejected,
+			StatusCode::EVMC_OUT_OF_MEMORY                => EVMCStatusCode::EvmcOutOfMemory,
+		}
+	}
+}
+
+impl From<ExtendExitReason> for ExitReason {
+	fn from(s: ExtendExitReason) -> Self {
+		match s {
+			ExtendExitReason::ExitReason(reason) => reason,
+			ExtendExitReason::EVMCStatusCode(status) => {
+				match status {
+					EVMCStatusCode::EvmcSuccess                    => ExitReason::Succeed(ExitSucceed::Returned),
+					EVMCStatusCode::EvmcFailure                    => ExitReason::Fatal(ExitFatal::Other("Evmc Failure".into())),
+					EVMCStatusCode::EvmcRevert                     => ExitReason::Revert(ExitRevert::Reverted),
+					EVMCStatusCode::EvmcOutOfGas                   => ExitReason::Error(ExitError::OutOfGas),
+					EVMCStatusCode::EvmcInvalidInstruction         => ExitReason::Error(ExitError::DesignatedInvalid),
+					EVMCStatusCode::EvmcUndefinedInstruction       => ExitReason::Fatal(ExitFatal::NotSupported),
+					EVMCStatusCode::EvmcStackOverflow              => ExitReason::Error(ExitError::StackOverflow),
+					EVMCStatusCode::EvmcStackUnderflow             => ExitReason::Error(ExitError::StackUnderflow),
+					EVMCStatusCode::EvmcBadJumpDestination         => ExitReason::Error(ExitError::InvalidJump),
+					EVMCStatusCode::EvmcInvalidMemoryAccess        => ExitReason::Error(ExitError::InvalidRange),
+					EVMCStatusCode::EvmcCallDepthExceeded          => ExitReason::Error(ExitError::CallTooDeep),
+					EVMCStatusCode::EvmcStaticModeViolation        => ExitReason::Error(ExitError::Other("Evmc Static Mode Violation".into())),
+					EVMCStatusCode::EvmcPrecompileFailure          => ExitReason::Error(ExitError::Other("Evmc Precompile Failure".into())),
+					EVMCStatusCode::EvmcContractValidationFailure  => ExitReason::Error(ExitError::Other("Evmc Contract Validation Failure".into())),
+					EVMCStatusCode::EvmcArgumentOutOfRange         => ExitReason::Error(ExitError::Other("Evmc Argument Out Of Range".into())),
+					EVMCStatusCode::EvmcWasmUnreachableInstruction => ExitReason::Fatal(ExitFatal::UnhandledInterrupt),
+					EVMCStatusCode::EvmcWasmTrap                   => ExitReason::Fatal(ExitFatal::UnhandledInterrupt),
+					EVMCStatusCode::EvmcInternalError              => ExitReason::Error(ExitError::Other("Evmc Internal Error".into())),
+					EVMCStatusCode::EvmcRejected                   => ExitReason::Error(ExitError::Other("Evmc Rejected".into())),
+					EVMCStatusCode::EvmcOutOfMemory                => ExitReason::Error(ExitError::Other("Evmc Out Of Memory".into())),
+				}
+			}
 		}
 	}
 }

@@ -106,7 +106,7 @@ decl_event!(
 	/// Ethereum pallet events.
 	pub enum Event {
 		/// An ethereum transaction was successfully executed. [from, to/contract_address, transaction_hash, exit_reason]
-		Executed(H160, H160, H256, ExtendExitReason),
+		Executed(H160, H160, H256, ExitReason),
 	}
 );
 
@@ -208,7 +208,7 @@ decl_module! {
 
 			Pending::append((transaction, status, receipt));
 
-			Self::deposit_event(Event::Executed(source, contract_address.unwrap_or_default(), transaction_hash, reason));
+			Self::deposit_event(Event::Executed(source, contract_address.unwrap_or_default(), transaction_hash, reason.into()));
 			Ok(Some(T::GasWeightMapping::gas_to_weight(used_gas.unique_saturated_into())).into())
 		}
 
