@@ -30,7 +30,7 @@ use ethereum::{
 };
 use jsonrpc_core::{ErrorCode, Error, Value};
 use rustc_hex::ToHex;
-use pallet_vm::{ExtendExitReason, ExitReason};
+use pallet_vm::{ExtendExitReason, ExitReason, EVMCStatusCode};
 use sha3::{Digest, Keccak256};
 
 pub fn internal_err<T: ToString>(message: T) -> Error {
@@ -75,15 +75,18 @@ pub fn error_on_execution_failure(reason: &ExtendExitReason, data: &[u8]) -> Res
 				data: Some(Value::String("0x".to_string()))
 			})
 		},
-		#[cfg(feature = "std")]
 		ExtendExitReason::EVMCStatusCode(status) => {
 			match status {
 				EVMCStatusCode::EvmcSuccess => Ok(()),
-				// FixMe: handle EVMC vm fail cases
-				_ => Ok(()),
+				_ => {
+					Err(Error {
+						code: ErrorCode::InternalError,
+						message: format!("evmc vm error: {:?}", status),
+						data: Some(Value::String("0x".to_string()))
+					})
+				},
 			}
 		},
-		_ => Ok(()),
 	}
 }
 

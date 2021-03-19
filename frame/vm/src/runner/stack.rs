@@ -174,7 +174,6 @@ impl<T: Config> Runner<T> {
 		})
 	}
 
-	/// FixMe, consider to unify with evm precompiles
 	#[cfg(feature = "std")]
 	pub(self) fn execute_precompiles(
 		target: &H160,
@@ -359,9 +358,9 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, Self::Error> {
 		if_std! {
-			let address = create_address(source,
-				nonce.unwrap_or(Module::<T>::account_basic(&source).nonce));
 			if is_wasm(&init) {
+				let address = create_address(source,
+					nonce.unwrap_or(Module::<T>::account_basic(&source).nonce));
 				return match Self::execute_ssvm(
 					source,
 					address,
@@ -418,10 +417,9 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, Self::Error> {
 		if_std! {
-			// FixMe, need support create2 address
-			let address = create_address(source,
-				nonce.unwrap_or(Module::<T>::account_basic(&source).nonce));
 			if is_wasm(&init) {
+				let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
+				let address = create2_address(source, salt, code_hash);
 				return match Self::execute_ssvm(
 					source,
 					address,
@@ -476,6 +474,16 @@ pub fn create_address(caller: H160, nonce: U256) -> H160 {
 	stream.append(&nonce);
 	H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
 }
+
+pub fn create2_address(caller: H160, salt: H256, code_hash: H256) -> H160 {
+	let mut hasher = Keccak256::new();
+	hasher.input(&[0xff]);
+	hasher.input(&caller[..]);
+	hasher.input(&salt[..]);
+	hasher.input(&code_hash[..]);
+	H256::from_slice(hasher.result().as_slice()).into()
+}
+
 struct SubstrateStackSubstate<'config> {
 	metadata: StackSubstateMetadata<'config>,
 	deletes: BTreeSet<H160>,
@@ -842,7 +850,7 @@ impl<'vicinity, 'config, T: Config> HostInterface for VmStackState<'vicinity, 'c
 				match info {
 	        Ok(info) => orig_gas_left - info.used_gas.as_u64() as i64,
 	        Err(_) => {
-	        	// FixMe: fail tx need cost
+	        	// FIXME: fail tx need cost
 	        	orig_gas_left
 	        }
 	      }
