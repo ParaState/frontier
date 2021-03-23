@@ -479,6 +479,16 @@ impl<B, C, P, CT, BE, H: ExHashT> EthApiT for EthApi<B, C, P, CT, BE, H> where
 	}
 
 	fn block_by_number(&self, number: BlockNumber, full: bool) -> Result<Option<RichBlock>> {
+		let best_number = self.client.info().best_number;
+		let target_number = match number {
+			BlockNumber::Num(num) => Some(num),
+			_ => None,
+		};
+		if target_number.is_some() {
+			if target_number.unwrap() > best_number.unique_saturated_into() {
+                return Ok(None);
+			}
+		}
 		let id = match self.native_block_id(Some(number))? {
 			Some(id) => id,
 			None => return Ok(None),
