@@ -8,6 +8,9 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
 use std::collections::BTreeMap;
+use sp_core::{U256, H160};
+use std::str::FromStr;
+use pallet_evm::GenesisAccount as EVMAccount;
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -134,6 +137,13 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
+	let mut evm_genesis = BTreeMap::new();
+	evm_genesis.insert(H160::from_str(&"0x6be02d1d3665660d22ff9624b7be0551ee1ac91b").unwrap(), EVMAccount {
+		nonce: U256::zero(),
+		balance: U256::max_value(),
+		storage: BTreeMap::new(),
+		code: [].into(),
+	});
 	GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -155,7 +165,7 @@ fn testnet_genesis(
 			key: root_key,
 		}),
 		pallet_evm: Some(EVMConfig {
-			accounts: BTreeMap::new(),
+			accounts: evm_genesis,
 		}),
 		pallet_ethereum: Some(EthereumConfig {}),
 	}
