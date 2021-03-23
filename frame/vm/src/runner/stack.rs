@@ -153,7 +153,7 @@ impl<T: Config> Runner<T> {
 			origin: source,
 		};
 		let metadata = StackSubstateMetadata::new(gas_limit, &config);
-		let state = VmStackState::new(&vicinity, metadata, None);
+		let state = VmStackState::new(&vicinity, Some(metadata), None);
 		let mut executor = StackExecutor::new_with_precompile(
 			state,
 			config,
@@ -196,7 +196,7 @@ impl<T: Config> Runner<T> {
 
 	/// Execute an SSVM operation.
 	#[cfg(feature = "std")]
-	pub fn execute_ssvm<'config>(
+	pub fn execute_ssvm(
 		source: H160,
 		target: H160,
 		value: U256,
@@ -205,7 +205,6 @@ impl<T: Config> Runner<T> {
 		gas_price: Option<U256>,
 		nonce: Option<U256>,
 		call_kind: CallKind,
-		config: &'config evm::Config,
 		salt: Option<H256>,
 	) -> Result<(Vec<u8>, ExtendExitReason, U256, Vec<Log>), Error<T>> {
 
@@ -238,8 +237,7 @@ impl<T: Config> Runner<T> {
 			gas_price,
 			origin: source,
 		};
-		let metadata = StackSubstateMetadata::new(gas_limit, &config);
-		let mut state = VmStackState::<T>::new(&vicinity, metadata, Some(tx_context));
+		let mut state = VmStackState::<T>::new(&vicinity, None, Some(tx_context));
 		state.inc_nonce(source);
 		state.substate.enter(gas_limit, is_static);
 		let (output, gas_left, status_code) = {
@@ -316,7 +314,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					gas_price,
 					nonce,
 					CallKind::EVMC_CALL,
-					config,
 					None
 				) {
 					Ok((value, exit_reason, used_gas, logs)) => {
@@ -370,7 +367,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					gas_price,
 					nonce,
 					CallKind::EVMC_CREATE,
-					config,
 					None
 				) {
 					Ok((_, exit_reason, used_gas, logs)) => {
@@ -429,7 +425,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					gas_price,
 					nonce,
 					CallKind::EVMC_CREATE2,
-					config,
 					Some(salt)
 				) {
 					Ok((_, exit_reason, used_gas, logs)) => {
@@ -485,7 +480,7 @@ pub fn create2_address(caller: H160, salt: H256, code_hash: H256) -> H160 {
 }
 
 struct SubstrateStackSubstate<'config> {
-	metadata: StackSubstateMetadata<'config>,
+	metadata: Option<StackSubstateMetadata<'config>>,
 	deletes: BTreeSet<H160>,
 	logs: Vec<Log>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
@@ -493,16 +488,18 @@ struct SubstrateStackSubstate<'config> {
 
 impl<'config> SubstrateStackSubstate<'config> {
 	pub fn metadata(&self) -> &StackSubstateMetadata<'config> {
-		&self.metadata
+		// evm code flow will make metadata exist
+		&self.metadata.as_ref().unwrap()
 	}
 
 	pub fn metadata_mut(&mut self) -> &mut StackSubstateMetadata<'config> {
-		&mut self.metadata
+		// evm code flow will make metadata exist
+		self.metadata.as_mut().unwrap()
 	}
 
 	pub fn enter(&mut self, gas_limit: u64, is_static: bool) {
 		let mut entering = Self {
-			metadata: self.metadata.spit_child(gas_limit, is_static),
+			metadata: if let Some(metadata) = &self.metadata { Some(metadata.spit_child(gas_limit, is_static)) } else { None },
 			parent: None,
 			deletes: BTreeSet::new(),
 			logs: Vec::new(),
@@ -518,7 +515,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let mut exited = *self.parent.take().expect("Cannot commit on root substate");
 		mem::swap(&mut exited, self);
 
-		self.metadata.swallow_commit(exited.metadata)?;
+		if let Some(metadata) = &mut self.metadata { metadata.swallow_commit(exited.metadata.unwrap())? };
 		self.logs.append(&mut exited.logs);
 		self.deletes.append(&mut exited.deletes);
 
@@ -530,7 +527,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
 
-		self.metadata.swallow_revert(exited.metadata)?;
+		if let Some(metadata) = &mut self.metadata { metadata.swallow_revert(exited.metadata.unwrap())? };
 		self.logs.append(&mut exited.logs);
 
 		sp_io::storage::rollback_transaction();
@@ -541,7 +538,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
 
-		self.metadata.swallow_discard(exited.metadata)?;
+		if let Some(metadata) = &mut self.metadata { metadata.swallow_discard(exited.metadata.unwrap())? };
 		self.logs.append(&mut exited.logs);
 
 		sp_io::storage::rollback_transaction();
@@ -614,7 +611,7 @@ pub struct VmStackState<'vicinity, 'config, T> {
 
 impl<'vicinity, 'config, T: Config> VmStackState<'vicinity, 'config, T> {
 	/// Create a new backend with given vicinity.
-	pub fn new(vicinity: &'vicinity Vicinity, metadata: StackSubstateMetadata<'config>, tx_context: Option<TxContext>) -> Self {
+	pub fn new(vicinity: &'vicinity Vicinity, metadata: Option<StackSubstateMetadata<'config>>, tx_context: Option<TxContext>) -> Self {
 		Self {
 			vicinity,
 			substate: SubstrateStackSubstate {
