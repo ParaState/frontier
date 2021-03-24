@@ -140,7 +140,7 @@ fn testnet_genesis(
 	let mut vm_genesis = BTreeMap::new();
 	vm_genesis.insert(H160::from_str(&"0x6be02d1d3665660d22ff9624b7be0551ee1ac91b").unwrap(), ETHAccount {
 		nonce: U256::zero(),
-		balance: U256::max_value(),
+		balance: "0x115eec47f6cf7e35000000".into(), // 21M Ether
 		storage: BTreeMap::new(),
 		code: [].into(),
 	});
