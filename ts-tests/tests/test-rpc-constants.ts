@@ -9,9 +9,9 @@ describeWithFrontier("Frontier RPC (Constant)", `simple-specs.json`, (context) =
 		expect(await context.web3.eth.getHashrate()).to.equal(0);
 	});
 
-	it("should have chainId 42", async function () {
-		// The chainId is defined by the Substrate Chain Id, default to 42
-		expect(await context.web3.eth.getChainId()).to.equal(42);
+	it("should have chainId 123", async function () {
+		// The chainId is defined by the Substrate Chain Id, default to 123
+		expect(await context.web3.eth.getChainId()).to.equal(123);
 	});
 
 	it("should have no account", async function () {
