@@ -179,16 +179,16 @@ impl<T: Config> Runner<T> {
 		target: &H160,
 		data: &Vec<u8>,
 		gas_limit: &u64,
-  ) -> (bool, Vec<u8>, i64) {
+	) -> (bool, Vec<u8>, i64) {
 		let s: String = rustc_hex::ToHexIter::new(target.as_bytes().iter()).collect::<String>();
 		match &s[..] {
 			"0000000000000000000000000000000000000002" => {
-			return (true, Sha256::digest(&data).to_vec(), *gas_limit as i64);
-		}
+				return (true, Sha256::digest(&data).to_vec(), *gas_limit as i64);
+			}
 			"0000000000000000000000000000000000000009" => {
-			return (true, Keccak256::digest(&data).to_vec(), *gas_limit as i64);
-		}
-		_ => {
+				return (true, Keccak256::digest(&data).to_vec(), *gas_limit as i64);
+			}
+			_ => {
 				return (false, vec![0u8], *gas_limit as i64);
 			}
 		}
@@ -248,18 +248,18 @@ impl<T: Config> Runner<T> {
 			else {
 				let vm = ssvm::create();
 				let (output, gas_left, status_code) = vm.execute(
-				&mut state,
-				Revision::EVMC_BYZANTIUM,
-				call_kind,
-				is_static,
-				depth,
-				gas_limit as i64,
-				target.as_fixed_bytes(),
-				source.as_fixed_bytes(),
-				&data[..],
-				&value.into(),
-				&code,
-				&salt.unwrap_or(H256::zero()).as_fixed_bytes(),
+					&mut state,
+					Revision::EVMC_BYZANTIUM,
+					call_kind,
+					is_static,
+					depth,
+					gas_limit as i64,
+					target.as_fixed_bytes(),
+					source.as_fixed_bytes(),
+					&data[..],
+					&value.into(),
+					&code,
+					&salt.unwrap_or(H256::zero()).as_fixed_bytes(),
 				);
 				(output.to_vec(), gas_left, status_code)
 			}
@@ -796,98 +796,98 @@ impl<'vicinity, 'config, T: Config> HostInterface for VmStackState<'vicinity, 'c
 		salt: &Bytes32,
 		) -> (Vec<u8>, i64, Address, StatusCode) {
 
-			fn reason2status(reason: &ExitReason) -> StatusCode {
-				match reason {
-					ExitReason::Succeed(_)             => StatusCode::EVMC_SUCCESS,
-					ExitReason::Error(status) => {
-						match status {
-							ExitError::StackUnderflow      => StatusCode::EVMC_STACK_UNDERFLOW,
-							ExitError::StackOverflow       => StatusCode::EVMC_STACK_OVERFLOW,
-							ExitError::InvalidJump         => StatusCode::EVMC_BAD_JUMP_DESTINATION,
-							ExitError::InvalidRange        => StatusCode::EVMC_INVALID_MEMORY_ACCESS,
-							ExitError::DesignatedInvalid   => StatusCode::EVMC_INVALID_INSTRUCTION,
-							ExitError::CallTooDeep         => StatusCode::EVMC_CALL_DEPTH_EXCEEDED,
-							ExitError::CreateCollision     => StatusCode::EVMC_FAILURE,
-							ExitError::CreateContractLimit => StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE,
-							ExitError::OutOfOffset         => StatusCode::EVMC_FAILURE,
-							ExitError::OutOfGas            => StatusCode::EVMC_OUT_OF_GAS,
-							ExitError::OutOfFund           => StatusCode::EVMC_FAILURE,
-							ExitError::PCUnderflow         => StatusCode::EVMC_FAILURE,
-							ExitError::CreateEmpty         => StatusCode::EVMC_FAILURE,
-							_                              => StatusCode::EVMC_FAILURE,
-						}
+		fn reason2status(reason: &ExitReason) -> StatusCode {
+			match reason {
+				ExitReason::Succeed(_)             => StatusCode::EVMC_SUCCESS,
+				ExitReason::Error(status) => {
+					match status {
+						ExitError::StackUnderflow      => StatusCode::EVMC_STACK_UNDERFLOW,
+						ExitError::StackOverflow       => StatusCode::EVMC_STACK_OVERFLOW,
+						ExitError::InvalidJump         => StatusCode::EVMC_BAD_JUMP_DESTINATION,
+						ExitError::InvalidRange        => StatusCode::EVMC_INVALID_MEMORY_ACCESS,
+						ExitError::DesignatedInvalid   => StatusCode::EVMC_INVALID_INSTRUCTION,
+						ExitError::CallTooDeep         => StatusCode::EVMC_CALL_DEPTH_EXCEEDED,
+						ExitError::CreateCollision     => StatusCode::EVMC_FAILURE,
+						ExitError::CreateContractLimit => StatusCode::EVMC_CONTRACT_VALIDATION_FAILURE,
+						ExitError::OutOfOffset         => StatusCode::EVMC_FAILURE,
+						ExitError::OutOfGas            => StatusCode::EVMC_OUT_OF_GAS,
+						ExitError::OutOfFund           => StatusCode::EVMC_FAILURE,
+						ExitError::PCUnderflow         => StatusCode::EVMC_FAILURE,
+						ExitError::CreateEmpty         => StatusCode::EVMC_FAILURE,
+						_                              => StatusCode::EVMC_FAILURE,
 					}
-					ExitReason::Revert(_)   => StatusCode::EVMC_REVERT,
-					ExitReason::Fatal(status) => {
-						match status {
-							ExitFatal::NotSupported        => StatusCode::EVMC_UNDEFINED_INSTRUCTION,
-							ExitFatal::UnhandledInterrupt  => StatusCode::EVMC_WASM_TRAP,
-							ExitFatal::CallErrorAsFatal(_) => StatusCode::EVMC_FAILURE,
-							_                              => StatusCode::EVMC_FAILURE,
-						}
+				}
+				ExitReason::Revert(_)   => StatusCode::EVMC_REVERT,
+				ExitReason::Fatal(status) => {
+					match status {
+						ExitFatal::NotSupported        => StatusCode::EVMC_UNDEFINED_INSTRUCTION,
+						ExitFatal::UnhandledInterrupt  => StatusCode::EVMC_WASM_TRAP,
+						ExitFatal::CallErrorAsFatal(_) => StatusCode::EVMC_FAILURE,
+						_                              => StatusCode::EVMC_FAILURE,
 					}
 				}
 			}
+		}
 
-			fn get_value<T>(info: &Result<CallInfo, T>) -> Vec<u8> {
-				match info {
-	        Ok(info) => return info.value.clone(),
-	        Err(_) => vec![0; 0]
-      	}
+		fn get_value<T>(info: &Result<CallInfo, T>) -> Vec<u8> {
+			match info {
+				Ok(info) => return info.value.clone(),
+				Err(_) => vec![0; 0]
 			}
+		}
 
-			fn get_address<T>(info: &Result<CreateInfo, T>) -> Address {
-				match info {
-	        Ok(info) => return info.value.into(),
-	        Err(_) => [0u8; ADDRESS_LENGTH]
-      	}
+		fn get_address<T>(info: &Result<CreateInfo, T>) -> Address {
+			match info {
+				Ok(info) => return info.value.into(),
+				Err(_) => [0u8; ADDRESS_LENGTH]
 			}
+		}
 
-			fn get_gas_left<R, T>(info: &Result<ExecutionInfo<R>, T>, orig_gas_left: i64) -> i64 {
-				match info {
-	        Ok(info) => orig_gas_left - info.used_gas.as_u64() as i64,
-	        Err(_) => {
-	        	// FIXME: fail tx need cost
-	        	orig_gas_left
-	        }
-	      }
-	    }
-
-	    fn get_status_code<R, T>(info: &Result<ExecutionInfo<R>, T>) -> StatusCode {
-	    	match info {
-	    		Ok(info) => {
-	    			match &info.exit_reason {
-	    				ExtendExitReason::ExitReason(reason) => reason2status(reason),
-	        		ExtendExitReason::EVMCStatusCode(status) => status.to_owned().into()
-	        	}
-	        },
-	        Err(_) => StatusCode::EVMC_FAILURE,
-      	}
+		fn get_gas_left<R, T>(info: &Result<ExecutionInfo<R>, T>, orig_gas_left: i64) -> i64 {
+			match info {
+				Ok(info) => orig_gas_left - info.used_gas.as_u64() as i64,
+				Err(_) => {
+					// FIXME: fail tx need cost
+					orig_gas_left
+				}
 			}
+		}
 
-			let source = H160::from(sender);
-			let account_id = T::AddressMapping::into_account_id(source);
-			let account_basic = Module::<T>::account_basic(&source);
-			frame_system::Module::<T>::inc_account_nonce(&account_id);
-			let target = H160::from(destination);
-      match kind {
-        CallKind::EVMC_CALL => {
-        	let info = T::Runner::call(source, target, AccountCodes::get(&target), U256::from(value), gas as u64, None, Some(account_basic.nonce), T::config());
-        	(get_value(&info), get_gas_left(&info, gas), [0u8; ADDRESS_LENGTH], get_status_code(&info))
-        }
-        CallKind::EVMC_CREATE => {
-        	let info = T::Runner::create(source, input.to_vec(), U256::from(value), gas as u64, None, Some(account_basic.nonce), T::config());
-        	(vec![0; 0], get_gas_left(&info, gas), get_address(&info), get_status_code(&info))
-        }
-        CallKind::EVMC_CREATE2 => {
-        	let info = T::Runner::create2(source, input.to_vec(), H256::from(salt), U256::from(value), gas as u64, None, Some(account_basic.nonce), T::config());
-        	(vec![0; 0], get_gas_left(&info, gas), get_address(&info), get_status_code(&info))
-        }
-        _ => {
-        	// EVMC_DELEGATECALL, EVMC_CALLCODE not supported yet
-	        (vec![0; 0], gas, [0u8; ADDRESS_LENGTH], StatusCode::EVMC_REJECTED)
-        }
-      }
+		fn get_status_code<R, T>(info: &Result<ExecutionInfo<R>, T>) -> StatusCode {
+			match info {
+				Ok(info) => {
+					match &info.exit_reason {
+						ExtendExitReason::ExitReason(reason) => reason2status(reason),
+						ExtendExitReason::EVMCStatusCode(status) => status.to_owned().into()
+					}
+				},
+				Err(_) => StatusCode::EVMC_FAILURE,
+			}
+		}
+
+		let source = H160::from(sender);
+		let account_id = T::AddressMapping::into_account_id(source);
+		let account_basic = Module::<T>::account_basic(&source);
+		frame_system::Module::<T>::inc_account_nonce(&account_id);
+		let target = H160::from(destination);
+		match kind {
+			CallKind::EVMC_CALL => {
+				let info = T::Runner::call(source, target, AccountCodes::get(&target), U256::from(value), gas as u64, None, Some(account_basic.nonce), T::config());
+				(get_value(&info), get_gas_left(&info, gas), [0u8; ADDRESS_LENGTH], get_status_code(&info))
+			}
+			CallKind::EVMC_CREATE => {
+				let info = T::Runner::create(source, input.to_vec(), U256::from(value), gas as u64, None, Some(account_basic.nonce), T::config());
+				(vec![0; 0], get_gas_left(&info, gas), get_address(&info), get_status_code(&info))
+			}
+			CallKind::EVMC_CREATE2 => {
+				let info = T::Runner::create2(source, input.to_vec(), H256::from(salt), U256::from(value), gas as u64, None, Some(account_basic.nonce), T::config());
+				(vec![0; 0], get_gas_left(&info, gas), get_address(&info), get_status_code(&info))
+			}
+			_ => {
+				// EVMC_DELEGATECALL, EVMC_CALLCODE not supported yet
+				(vec![0; 0], gas, [0u8; ADDRESS_LENGTH], StatusCode::EVMC_REJECTED)
+			}
+		}
 	}
 }
 
