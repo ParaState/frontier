@@ -21,7 +21,7 @@ describeWithFrontier("Frontier RPC (Constructor Revert)", `simple-specs.json`, (
 
 	it("should provide a tx receipt after successful deployment", async function () {
 		this.timeout(15000);
-		const GOOD_TX_HASH = '0xae813c533aac0719fbca4db6e3bb05cfb5859bdeaaa7dc5c9dbd24083301be8d';
+		const GOOD_TX_HASH = '0xa229ed37d156a88c1b1c3ac9906dce41fe266033333629b73254bc5fddd26e04';
 
 		const tx = await context.web3.eth.accounts.signTransaction(
 			{
@@ -52,7 +52,7 @@ describeWithFrontier("Frontier RPC (Constructor Revert)", `simple-specs.json`, (
 			from: '0x6be02d1d3665660d22ff9624b7be0551ee1ac91b',
 			gasUsed: 67231,
 			to: null,
-			transactionHash: '0xae813c533aac0719fbca4db6e3bb05cfb5859bdeaaa7dc5c9dbd24083301be8d',
+			transactionHash: GOOD_TX_HASH,
 			transactionIndex: 0,
 			status: true
 		});
@@ -61,8 +61,7 @@ describeWithFrontier("Frontier RPC (Constructor Revert)", `simple-specs.json`, (
 	it("should provide a tx receipt after failed deployment", async function () {
 		this.timeout(15000);
 		// Transaction hash depends on which nonce we're using
-		//const FAIL_TX_HASH = '0x89a956c4631822f407b3af11f9251796c276655860c892919f848699ed570a8d'; //nonce 1
-		const FAIL_TX_HASH = '0x640df9deb183d565addc45bdc8f95b30c7c03ce7e69df49456be9929352e4347'; //nonce 2
+		const FAIL_TX_HASH = '0x93d16d66d2226b144df3470499aea5dbe4b64c12cd87ddc1697b7d1df1f62854'; //nonce 2
 
 		const tx = await context.web3.eth.accounts.signTransaction(
 			{
@@ -92,7 +91,7 @@ describeWithFrontier("Frontier RPC (Constructor Revert)", `simple-specs.json`, (
 			from: '0x6be02d1d3665660d22ff9624b7be0551ee1ac91b',
 			gasUsed: 54600,
 			to: null,
-			transactionHash: '0x640df9deb183d565addc45bdc8f95b30c7c03ce7e69df49456be9929352e4347',
+			transactionHash: FAIL_TX_HASH,
 			transactionIndex: 0,
 			status: false
 		});

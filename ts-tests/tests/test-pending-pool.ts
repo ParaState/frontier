@@ -32,9 +32,9 @@ describeWithFrontier("Frontier RPC (Pending Pool)", `simple-specs.json`, (contex
 			blockNumber: null,
 			hash: tx_hash,
 			publicKey: "0x624f720eae676a04111631c9ca338c11d0f5a80ee42210c6be72983ceb620fbf645a96f951529fa2d70750432d11b7caba5270c4d677255be90b3871c8c58069",
-			r: "0x5431b25e8100a21ced6af01868357b19d58b94afa6f57dc7cbf81f4a922ddecc",
-			s: "0x22e05530d015ea702ffb37af313e691ce4423565c2734c267edd3c74aea0a010",
-			v: "0x77",
+			r: "0x691f888f99e9210b273b75bfbf7c83d8747c2a0f81880561704aaf9dcb9d0159",
+			s: "0x601b4bddd8b6b1ae1b231ac1b456044d65e00d59579b63bf44a67305c039840f",
+			v: "0x11a",
 		});
 
 		await createAndFinalizeBlock(context.web3);
@@ -44,9 +44,9 @@ describeWithFrontier("Frontier RPC (Pending Pool)", `simple-specs.json`, (contex
 			blockNumber: "0x1",
 			hash: tx_hash,
 			publicKey: "0x624f720eae676a04111631c9ca338c11d0f5a80ee42210c6be72983ceb620fbf645a96f951529fa2d70750432d11b7caba5270c4d677255be90b3871c8c58069",
-			r: "0x5431b25e8100a21ced6af01868357b19d58b94afa6f57dc7cbf81f4a922ddecc",
-			s: "0x22e05530d015ea702ffb37af313e691ce4423565c2734c267edd3c74aea0a010",
-			v: "0x77",
+			r: "0x691f888f99e9210b273b75bfbf7c83d8747c2a0f81880561704aaf9dcb9d0159",
+			s: "0x601b4bddd8b6b1ae1b231ac1b456044d65e00d59579b63bf44a67305c039840f",
+			v: "0x11a",
 		});
 	});
 });
