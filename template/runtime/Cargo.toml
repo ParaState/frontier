@@ -45,6 +45,8 @@ sp-transaction-pool = { version = "2.0.0-dev", default-features = false, git = "
 sp-version = { version = "2.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 
 fp-rpc = { default-features = false, path = "../../primitives/rpc" }
+pallet-validator-set = { package = "substrate-validator-set", default-features = false, path = "../../frame/validator-set" }
+pallet-session = { version = "2.0.0-dev", package = "pallet-session", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
@@ -72,6 +74,8 @@ std = [
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
+	"pallet-validator-set/std",
+	"pallet-session/std",
 
 	"sp-api/std",
 	"sp-block-builder/std",
