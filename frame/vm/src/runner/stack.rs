@@ -146,7 +146,7 @@ impl<T: Config> Runner<T> {
 	) -> Result<ExecutionInfo<R>, Error<T>> where
 		F: FnOnce(&mut StackExecutor<'config, VmStackState<'_, 'config, T>>) -> (ExitReason, R),
 	{
-		let (gas_price, total_fee) = Self::pre_processing(source, value, gas_limit, gas_price, nonce).unwrap();
+		let (gas_price, total_fee) = Self::pre_processing(source, value, gas_limit, gas_price, nonce)?;
 
 		let vicinity = Vicinity {
 			gas_price,
@@ -208,8 +208,7 @@ impl<T: Config> Runner<T> {
 		salt: Option<H256>,
 	) -> Result<(Vec<u8>, ExtendExitReason, U256, Vec<Log>), Error<T>> {
 
-		let (gas_price, total_fee) = Self::pre_processing(source, value, gas_limit, gas_price, nonce).unwrap();
-
+		let (gas_price, total_fee) = Self::pre_processing(source, value, gas_limit, gas_price, nonce)?;
 
 		// No coinbase, difficulty in substrate nodes.
 		let coinbase = H160::zero();
