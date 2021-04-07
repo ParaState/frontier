@@ -1637,6 +1637,7 @@ dependencies = [
  "pallet-ethereum",
  "pallet-grandpa",
  "pallet-randomness-collective-flip",
+ "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -1657,6 +1658,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "substrate-validator-set",
  "substrate-wasm-builder",
 ]
 
@@ -7090,6 +7092,21 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "sp-state-machine",
+]
+
+[[package]]
+name = "substrate-validator-set"
+version = "0.2.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-session",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

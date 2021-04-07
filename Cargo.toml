@@ -2,6 +2,7 @@
 members = [
 	"frame/dynamic-fee",
 	"frame/ethereum",
+	"frame/validator-set",
 	"frame/vm",
 	"frame/vm/precompile/simple",
 	"frame/vm/precompile/modexp",
