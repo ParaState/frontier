@@ -64,7 +64,7 @@ After adding types, it will look like:
 
 ![](images/types.png)
 
-## Set keys for new node (Charlie)
+## Set Keys for New Node (Charlie)
 
 Now, connect polkadot.js explorer to Charlie's websocket endpoint (`ws://localhost:9966`) using this link: https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9966#/explorer
 
@@ -79,6 +79,11 @@ Copy the hex value result. Go to `Developer -> Extrinsics` and select `Charlie`,
 Click submit and then sign submit:
 
 ![](images/signAndSubmit.png)
+
+## Sudo Permission
+
+In `pallet-validator-set`, we need root permission to modify validator list. Here we use `pallet-sudo` to help us get root permission.
+At our local chain, root key is set to Alice's account by default. You could modify root key of `pallet-sudo` by customizing chain spec ([Create a Custom Chain Spec](https://substrate.dev/docs/en/tutorials/start-a-private-network/customspec)).
 
 ## Add Validator
 
