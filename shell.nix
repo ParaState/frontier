@@ -7,6 +7,7 @@ let
   nixpkgs = import <nixpkgs> { overlays = [ mozillaOverlay ]; };
   rust-nightly = with nixpkgs; ((rustChannelOf { date = "2020-10-23"; channel = "nightly"; }).rust.override {
     targets = [ "wasm32-unknown-unknown" ];
+    extensions = [ "rust-src" ];
   });
 in
 with nixpkgs; pkgs.mkShell {
@@ -15,6 +16,9 @@ with nixpkgs; pkgs.mkShell {
     cmake
     pkg-config
     rust-nightly
+
+    # rust-ssvm
+    boost
   ] ++ stdenv.lib.optionals stdenv.isDarwin [
     darwin.apple_sdk.frameworks.Security
   ];
