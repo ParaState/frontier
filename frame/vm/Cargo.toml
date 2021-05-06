@@ -29,7 +29,7 @@ rlp = { version = "0.5", default-features = false }
 evm = { version = "0.23.0", default-features = false, features = ["with-codec"] }
 sha2 = { version = "0.8", default-features = false }
 sha3 = { version = "0.8", default-features = false }
-ssvm = { optional = true, version = "0.1.0-rc2", package = "rust-ssvm" }
+ssvm = { optional = true, git = "https://github.com/second-state/rust-ssvm.git", branch = "v0.1.0-rc2-crates-p1", package = "rust-ssvm" }
 rustc-hex = { version = "2.1.0", default-features = false }
 
 [features]

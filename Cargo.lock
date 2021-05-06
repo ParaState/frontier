@@ -4929,8 +4929,7 @@ dependencies = [
 [[package]]
 name = "rust-ssvm"
 version = "0.1.0-rc2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5caaec81cefe36e321a21564c8695477db1e6e105fc27ab420ef57df04a597b1"
+source = "git+https://github.com/second-state/rust-ssvm.git?branch=v0.1.0-rc2-crates-p1#5443e14519633095f8e1f619ef7c64843eb28861"
 dependencies = [
  "clap",
  "cmake",
