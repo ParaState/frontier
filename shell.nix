@@ -15,6 +15,9 @@ with nixpkgs; pkgs.mkShell {
     cmake
     pkg-config
     rust-nightly
+
+    # rust-ssvm
+    boost
   ] ++ stdenv.lib.optionals stdenv.isDarwin [
     darwin.apple_sdk.frameworks.Security
   ];
