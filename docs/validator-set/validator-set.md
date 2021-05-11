@@ -20,6 +20,7 @@ cargo run --release \
   --tmp \
   --chain local \
   --validator \
+  --execution=Native \
   --unsafe-ws-external
 ```
 
@@ -35,6 +36,7 @@ cargo run --release \
   --tmp \
   --chain local \
   --validator \
+  --execution=Native \
   --unsafe-ws-external \
   --rpc-methods Unsafe \
   --port 30334 \
