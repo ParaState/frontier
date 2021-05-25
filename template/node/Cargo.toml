@@ -1,13 +1,13 @@
 [package]
-name = "frontier-template-node"
-version = "0.0.0"
-authors = ["Parity Technologies <admin@parity.io>"]
-description = "Frontier Node template"
+name = "parastate-icon-node"
+version = "1.0.0"
+authors = ["ParaState <admin@parastate.io>"]
+description = "ParaState ICON Node"
 edition = "2018"
 license = "Unlicense"
 build = "build.rs"
-homepage = "https://substrate.dev"
-repository = "https://github.com/paritytech/frontier/"
+homepage = "https://www.parastate.io"
+repository = "https://github.com/ParaState/frontier/"
 publish = false
 
 [package.metadata.docs.rs]
