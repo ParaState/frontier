@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ master, ssvm ]
+    branches: [ master, ssvm, icon ]
   pull_request:
-    branches: [ master, ssvm ]
+    branches: [ master, ssvm, icon ]
 
 jobs:
   build:

@@ -1727,58 +1727,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frontier-template-node"
-version = "0.0.0"
-dependencies = [
- "fc-consensus",
- "fc-db",
- "fc-mapping-sync",
- "fc-rpc",
- "fc-rpc-core",
- "fp-consensus",
- "fp-rpc",
- "frontier-template-runtime",
- "futures 0.3.15",
- "jsonrpc-core 15.1.0",
- "jsonrpc-pubsub 15.1.0",
- "log",
- "pallet-dynamic-fee",
- "pallet-ethereum",
- "pallet-transaction-payment-rpc",
- "pallet-vm",
- "sc-basic-authorship",
- "sc-cli",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-consensus-manual-seal",
- "sc-executor",
- "sc-finality-grandpa",
- "sc-network",
- "sc-rpc",
- "sc-rpc-api",
- "sc-service",
- "sc-telemetry",
- "sc-transaction-pool",
- "serde_json",
- "sp-api",
- "sp-block-builder",
- "sp-blockchain",
- "sp-chain-spec",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-core",
- "sp-finality-grandpa",
- "sp-inherents",
- "sp-runtime",
- "sp-timestamp",
- "sp-transaction-pool",
- "structopt",
- "substrate-build-script-utils",
- "substrate-frame-rpc-system",
-]
-
-[[package]]
 name = "frontier-template-runtime"
 version = "0.0.0"
 dependencies = [
@@ -4263,6 +4211,58 @@ dependencies = [
  "hex",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "parastate-icon-node"
+version = "1.0.0"
+dependencies = [
+ "fc-consensus",
+ "fc-db",
+ "fc-mapping-sync",
+ "fc-rpc",
+ "fc-rpc-core",
+ "fp-consensus",
+ "fp-rpc",
+ "frontier-template-runtime",
+ "futures 0.3.15",
+ "jsonrpc-core 15.1.0",
+ "jsonrpc-pubsub 15.1.0",
+ "log",
+ "pallet-dynamic-fee",
+ "pallet-ethereum",
+ "pallet-transaction-payment-rpc",
+ "pallet-vm",
+ "sc-basic-authorship",
+ "sc-cli",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-consensus-aura",
+ "sc-consensus-manual-seal",
+ "sc-executor",
+ "sc-finality-grandpa",
+ "sc-network",
+ "sc-rpc",
+ "sc-rpc-api",
+ "sc-service",
+ "sc-telemetry",
+ "sc-transaction-pool",
+ "serde_json",
+ "sp-api",
+ "sp-block-builder",
+ "sp-blockchain",
+ "sp-chain-spec",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-finality-grandpa",
+ "sp-inherents",
+ "sp-runtime",
+ "sp-timestamp",
+ "sp-transaction-pool",
+ "structopt",
+ "substrate-build-script-utils",
+ "substrate-frame-rpc-system",
 ]
 
 [[package]]
