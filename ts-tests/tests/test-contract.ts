@@ -10,7 +10,6 @@ describeWithFrontier("Frontier RPC (Contract)", `simple-specs.json`, (context) =
 	const TEST_CONTRACT_BYTECODE = Test.bytecode;
 	const TEST_CONTRACT_DEPLOYED_BYTECODE = Test.deployedBytecode
 	const FIRST_CONTRACT_ADDRESS = "0xc2bf5f29a4384b1ab0c063e1c666f02121b6084a";
-	const TX_HASH = "0xe8bed029b1eb3411f062b6e623488dd8c897937d8f24b990c63315bc5bcceeca";
 	// Those test are ordered. In general this should be avoided, but due to the time it takes
 	// to spin up a frontier node, it saves a lot of time.
 
@@ -30,7 +29,7 @@ describeWithFrontier("Frontier RPC (Contract)", `simple-specs.json`, (context) =
 		expect(await customRequest(context.web3, "eth_sendRawTransaction", [tx.rawTransaction])).to.deep.equal({
 			id: 1,
 			jsonrpc: "2.0",
-			result: TX_HASH,
+			result: tx.transactionHash,
 		});
 
 		// Verify the contract is not yet stored
