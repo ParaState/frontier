@@ -2,14 +2,18 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, ssvm ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, ssvm ]
 
 jobs:
   build:
     name: 'Run tests'
     runs-on: ubuntu-latest
+    container: secondstate/substrate-ssvm
+    env:
+      RUSTUP_HOME: /root/.rustup
+      CARGO_HOME: /root/.cargo
     steps:
     - uses: actions/checkout@v2
     - name: Submodules
@@ -24,14 +28,16 @@ jobs:
       env:
         WASM_BUILD_TOOLCHAIN: nightly-2020-08-29
     - name: Build
-      run: cargo build --verbose --all
+      run: cargo build --verbose --all --release
     - name: Run tests
-      run: cargo test --verbose --all
+      run: cargo test --verbose --all --release
     - name: Use Node.js 10
       uses: actions/setup-node@v1
       with:
         node-version: 10
     - name: Install functional tests typescript
       run: cd ts-tests && npm install
+    - name: Set LD_LIBRARY_PATH
+      run: echo "LD_LIBRARY_PATH=$(find target -name "libssvm-evmc.so" | xargs readlink -f | xargs dirname)" >> $GITHUB_ENV
     - name: Run functional tests
       run: cd ts-tests && npm run test
