@@ -364,7 +364,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		Ethereum: pallet_ethereum::{Module, Call, Storage, Event, Config, ValidateUnsigned},
-		VM: pallet_vm::{Module, Config, Call, Storage, Event<T>},
+		EVM: pallet_vm::{Module, Config, Call, Storage, Event<T>},
 		DynamicFee: pallet_dynamic_fee::{Module, Call, Storage, Config, Inherent},
 	}
 );
@@ -501,7 +501,7 @@ impl_runtime_apis! {
 		}
 
 		fn account_basic(address: H160) -> ETHAccount {
-			VM::account_basic(&address)
+			EVM::account_basic(&address)
 		}
 
 		fn gas_price() -> U256 {
@@ -509,7 +509,7 @@ impl_runtime_apis! {
 		}
 
 		fn account_code_at(address: H160) -> Vec<u8> {
-			VM::account_codes(address)
+			EVM::account_codes(address)
 		}
 
 		fn author() -> H160 {
@@ -519,7 +519,7 @@ impl_runtime_apis! {
 		fn storage_at(address: H160, index: U256) -> H256 {
 			let mut tmp = [0u8; 32];
 			index.to_big_endian(&mut tmp);
-			VM::account_storages(address, H256::from_slice(&tmp[..]))
+			EVM::account_storages(address, H256::from_slice(&tmp[..]))
 		}
 
 		fn call(
