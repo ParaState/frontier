@@ -1,4 +1,4 @@
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.0;
 
 contract Storage {
   function getStorage(bytes32 key) public view returns (bytes32 value) {
