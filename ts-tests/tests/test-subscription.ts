@@ -3,7 +3,7 @@ import { step } from "mocha-steps";
 
 import { createAndFinalizeBlock, customRequest, describeWithFrontier } from "./util";
 
-describeWithFrontier("Frontier RPC (Subscription)", `simple-specs.json`, (context) => {
+describeWithFrontier("Frontier RPC (Subscription)", (context) => {
 
 	let subscription;
 	let logs_generated = 0;
@@ -21,7 +21,7 @@ describeWithFrontier("Frontier RPC (Subscription)", `simple-specs.json`, (contex
 				data: TEST_CONTRACT_BYTECODE,
 				value: "0x00",
 				gasPrice: "0x01",
-				gas: "0x4F930",
+				gas: "0x1000000",
 			},
 			GENESIS_ACCOUNT_PRIVATE_KEY
 		);

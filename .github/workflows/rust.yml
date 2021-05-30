@@ -31,6 +31,8 @@ jobs:
       run: cargo build --verbose --all --release
     - name: Run tests
       run: cargo test --verbose --all --release
+    - name: Build manual seal client
+      run: cd template/node && cargo build --release --verbose --no-default-features --features manual-seal
     - name: Use Node.js 10
       uses: actions/setup-node@v1
       with:
@@ -40,4 +42,4 @@ jobs:
     - name: Set LD_LIBRARY_PATH
       run: echo "LD_LIBRARY_PATH=$(find target -name "libssvm-evmc.so" | xargs readlink -f | xargs dirname)" >> $GITHUB_ENV
     - name: Run functional tests
-      run: cd ts-tests && npm run test
+      run: cd ts-tests && npm run build && npm run test

@@ -1,13 +1,14 @@
 [package]
 name = "frontier-template-node"
-version = "2.0.0-dev"
+version = "0.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
-description = "Substrate Node template"
+description = "Frontier Node template"
 edition = "2018"
 license = "Unlicense"
 build = "build.rs"
 homepage = "https://substrate.dev"
-repository = "https://github.com/paritytech/substrate/"
+repository = "https://github.com/paritytech/frontier/"
+publish = false
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -41,6 +42,7 @@ sc-consensus = { git = "https://github.com/paritytech/substrate.git", branch = "
 sp-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 pallet-vm = { path = "../../frame/vm" }
 pallet-ethereum = { path = "../../frame/ethereum" }
+pallet-dynamic-fee = { path = "../../frame/dynamic-fee" }
 sc-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sc-client-api = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
@@ -51,11 +53,17 @@ sc-telemetry = { git = "https://github.com/paritytech/substrate.git", branch = "
 
 fc-consensus = { path = "../../client/consensus" }
 fp-consensus = { path = "../../primitives/consensus" }
-frontier-template-runtime = { path = "../runtime" }
+frontier-template-runtime = { path = "../runtime", default-features = false, features = ["std"] }
 fc-rpc = { path = "../../client/rpc" }
 fp-rpc = { path = "../../primitives/rpc" }
 fc-rpc-core = { path = "../../client/rpc-core" }
 fc-db = { path = "../../client/db" }
+fc-mapping-sync = { path = "../../client/mapping-sync" }
 
 [build-dependencies]
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
+
+[features]
+default = ["aura"]
+aura = ["frontier-template-runtime/aura"]
+manual-seal = ["frontier-template-runtime/manual-seal"]

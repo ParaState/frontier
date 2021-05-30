@@ -20,11 +20,62 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use fp_vm::LinearCostPrecompile;
-use evm::{ExitSucceed, ExitError};
+use fp_vm::Precompile;
+use evm::{ExitSucceed, ExitError, Context, executor::PrecompileOutput};
 use num::{BigUint, Zero, One, ToPrimitive, FromPrimitive};
 
+use core::ops::BitAnd;
+use core::cmp::max;
+
 pub struct Modexp;
+
+const MIN_GAS_COST: u64 = 200;
+
+// Calculate gas cost according to EIP 2565:
+// https://eips.ethereum.org/EIPS/eip-2565
+fn calculate_gas_cost(
+	base_length: u64,
+	exp_length: u64,
+	mod_length: u64,
+	exponent: &BigUint,
+) -> u64 {
+
+	fn calculate_multiplication_complexity(base_length: u64, mod_length: u64) -> u64 {
+		let max_length = max(base_length, mod_length);
+		let mut words = max_length / 8;
+		if max_length % 8 > 0 {
+			words += 1;
+		}
+
+		// TODO: prevent/handle overflow
+		words * words
+	}
+
+	fn calculate_iteration_count(exp_length: u64, exponent: &BigUint) -> u64 {
+		let mut iteration_count: u64 = 0;
+
+		if exp_length <= 32 && exponent.is_zero() {
+			iteration_count = 0;
+		} else if exp_length <= 32 {
+			iteration_count = exponent.bits() - 1;
+		} else if exp_length > 32 {
+
+			// construct BigUint to represent (2^256) - 1
+			let bytes: [u8; 32] = [0xFF; 32];
+			let max_256_bit_uint = BigUint::from_bytes_be(&bytes);
+
+			iteration_count = (8 * (exp_length - 32)) + ((exponent.bitand(max_256_bit_uint)).bits() - 1);
+		}
+
+		max(iteration_count, 1)
+	}
+
+	let multiplication_complexity = calculate_multiplication_complexity(base_length, mod_length);
+	let iteration_count = calculate_iteration_count(exp_length, exponent);
+	let gas = max(MIN_GAS_COST, multiplication_complexity * iteration_count / 3);
+
+	gas
+}
 
 // ModExp expects the following as inputs:
 // 1) 32 bytes expressing the length of base
@@ -42,14 +93,12 @@ pub struct Modexp;
 //
 //       see: https://eips.ethereum.org/EIPS/eip-198
 
-impl LinearCostPrecompile for Modexp {
-	const BASE: u64 = 15;
-	const WORD: u64 = 3;
-
+impl Precompile for Modexp {
 	fn execute(
 		input: &[u8],
-		_: u64,
-	) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+		target_gas: Option<u64>,
+		_context: &Context,
+	) -> core::result::Result<PrecompileOutput, ExitError> {
 		if input.len() < 96 {
 			return Err(ExitError::Other("input must contain at least 96 bytes".into()));
 		};
@@ -84,13 +133,12 @@ impl LinearCostPrecompile for Modexp {
 		// input length should be at least 96 + user-specified length of base + exp + mod
 		let total_len = base_len + exp_len + mod_len + 96;
 		if input.len() < total_len {
-			let err_msg = format!("expected at least {} bytes but received {}", total_len, input.len());
-			return Err(ExitError::Other(err_msg.into()));
+			return Err(ExitError::Other("insufficient input size".into()));
 		}
 
 		// Gas formula allows arbitrary large exp_len when base and modulus are empty, so we need to handle empty base first.
-		let r = if base_len == 0 && mod_len == 0 {
-			BigUint::zero()
+		let (r, gas_cost) = if base_len == 0 && mod_len == 0 {
+			(BigUint::zero(), MIN_GAS_COST)
 		} else {
 
 			// read the numbers themselves.
@@ -100,15 +148,22 @@ impl LinearCostPrecompile for Modexp {
 			let exp_start = base_start + base_len;
 			let exponent = BigUint::from_bytes_be(&input[exp_start..exp_start + exp_len]);
 
+			// do our gas accounting
+			// TODO: we could technically avoid reading base first...
+			let gas_cost = calculate_gas_cost(base_len as u64, exp_len as u64, mod_len as u64, &exponent);
+			if let Some(gas_left) = target_gas {
+				if gas_left < gas_cost {
+					return Err(ExitError::OutOfGas);
+				}
+			};
+
 			let mod_start = exp_start + exp_len;
 			let modulus = BigUint::from_bytes_be(&input[mod_start..mod_start + mod_len]);
 
-			// TODO: computation should only proceed if sufficient gas has been provided
-
 			if modulus.is_zero() || modulus.is_one() {
-				BigUint::zero()
+				(BigUint::zero(), gas_cost)
 			} else {
-				base.modpow(&exponent, &modulus)
+				(base.modpow(&exponent, &modulus), gas_cost)
 			}
 		};
 
@@ -118,12 +173,22 @@ impl LinearCostPrecompile for Modexp {
 		// always true except in the case of zero-length modulus, which leads to
 		// output of length and value 1.
 		if bytes.len() == mod_len {
-			Ok((ExitSucceed::Returned, bytes.to_vec()))
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: gas_cost,
+				output: bytes.to_vec(),
+				logs: Default::default(),
+			})
 		} else if bytes.len() < mod_len {
 			let mut ret = Vec::with_capacity(mod_len);
 			ret.extend(core::iter::repeat(0).take(mod_len - bytes.len()));
 			ret.extend_from_slice(&bytes[..]);
-			Ok((ExitSucceed::Returned, ret.to_vec()))
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: gas_cost,
+				output: ret.to_vec(),
+				logs: Default::default(),
+			})
 		} else {
 			Err(ExitError::Other("failed".into()))
 		}
@@ -134,6 +199,13 @@ impl LinearCostPrecompile for Modexp {
 mod tests {
 	use super::*;
 	extern crate hex;
+	use pallet_vm_test_vector_support::test_precompile_test_vectors;
+
+	#[test]
+	fn process_consensus_tests() -> std::result::Result<(), String> {
+		test_precompile_test_vectors::<Modexp>("../testdata/modexp_eip2565.json")?;
+		Ok(())
+	}
 
 	#[test]
 	fn test_empty_input() -> std::result::Result<(), ExitError> {
@@ -141,8 +213,14 @@ mod tests {
 
 		let cost: u64 = 1;
 
-		match Modexp::execute(&input, cost) {
-			Ok((_, _)) => {
+		let context: Context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: From::from(0),
+		};
+
+		match Modexp::execute(&input, Some(cost), &context) {
+			Ok(_) => {
 				panic!("Test not expected to pass");
 			},
 			Err(e) => {
@@ -162,12 +240,18 @@ mod tests {
 
 		let cost: u64 = 1;
 
-		match Modexp::execute(&input, cost) {
-			Ok((_, _)) => {
+		let context: Context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: From::from(0),
+		};
+
+		match Modexp::execute(&input, Some(cost), &context) {
+			Ok(_) => {
 				panic!("Test not expected to pass");
 			},
 			Err(e) => {
-				assert_eq!(e, ExitError::Other("expected at least 99 bytes but received 96".into()));
+				assert_eq!(e, ExitError::Other("insufficient input size".into()));
 				Ok(())
 			}
 		}
@@ -184,8 +268,14 @@ mod tests {
 
 		let cost: u64 = 1;
 
-		match Modexp::execute(&input, cost) {
-			Ok((_, _)) => {
+		let context: Context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: From::from(0),
+		};
+
+		match Modexp::execute(&input, Some(cost), &context) {
+			Ok(_) => {
 				panic!("Test not expected to pass");
 			},
 			Err(e) => {
@@ -208,12 +298,18 @@ mod tests {
 
 		// 3 ^ 5 % 7 == 5
 
-		let cost: u64 = 1;
+		let cost: u64 = 100000;
 
-		match Modexp::execute(&input, cost) {
-			Ok((_, output)) => {
-				assert_eq!(output.len(), 1); // should be same length as mod
-				let result = BigUint::from_bytes_be(&output[..]);
+		let context: Context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: From::from(0),
+		};
+
+		match Modexp::execute(&input, Some(cost), &context) {
+			Ok(precompile_result) => {
+				assert_eq!(precompile_result.output.len(), 1); // should be same length as mod
+				let result = BigUint::from_bytes_be(&precompile_result.output[..]);
 				let expected = BigUint::parse_bytes(b"5", 10).unwrap();
 				assert_eq!(result, expected);
 			},
@@ -237,12 +333,18 @@ mod tests {
 
 		// 59999 ^ 21 % 14452 = 10055
 
-		let cost: u64 = 1;
+		let cost: u64 = 100000;
 
-		match Modexp::execute(&input, cost) {
-			Ok((_, output)) => {
-				assert_eq!(output.len(), 32); // should be same length as mod
-				let result = BigUint::from_bytes_be(&output[..]);
+		let context: Context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: From::from(0),
+		};
+
+		match Modexp::execute(&input, Some(cost), &context) {
+			Ok(precompile_result) => {
+				assert_eq!(precompile_result.output.len(), 32); // should be same length as mod
+				let result = BigUint::from_bytes_be(&precompile_result.output[..]);
 				let expected = BigUint::parse_bytes(b"10055", 10).unwrap();
 				assert_eq!(result, expected);
 			},
@@ -263,12 +365,18 @@ mod tests {
 			fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f")
 			.expect("Decode failed");
 
-		let cost: u64 = 1;
+		let cost: u64 = 100000;
 
-		match Modexp::execute(&input, cost) {
-			Ok((_, output)) => {
-				assert_eq!(output.len(), 32); // should be same length as mod
-				let result = BigUint::from_bytes_be(&output[..]);
+		let context: Context = Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: From::from(0),
+		};
+
+		match Modexp::execute(&input, Some(cost), &context) {
+			Ok(precompile_result) => {
+				assert_eq!(precompile_result.output.len(), 32); // should be same length as mod
+				let result = BigUint::from_bytes_be(&precompile_result.output[..]);
 				let expected = BigUint::parse_bytes(b"1", 10).unwrap();
 				assert_eq!(result, expected);
 			},
