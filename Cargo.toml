@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"frame/dynamic-fee",
+	"frame/validator-set",
 	"frame/ethereum",
 	"frame/validator-set",
 	"frame/vm",

@@ -198,7 +198,7 @@ pub struct SessionKeys {
 	pub grandpa: Grandpa,
 }
 
-impl pallet_validator_set::Trait for Runtime {
+impl pallet_validator_set::Config for Runtime {
 	type Event = Event;
 }
 
