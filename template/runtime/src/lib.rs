@@ -198,7 +198,7 @@ pub struct SessionKeys {
 	pub grandpa: Grandpa,
 }
 
-impl pallet_validator_set::Trait for Runtime {
+impl pallet_validator_set::Config for Runtime {
 	type Event = Event;
 }
 
@@ -245,9 +245,12 @@ parameter_types! {
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
-	type OnTimestampSet = Aura;
 	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = ();
+	#[cfg(feature = "aura")]
+	type OnTimestampSet = Aura;
+	#[cfg(feature = "manual-seal")]
+	type OnTimestampSet = ();
 }
 
 parameter_types! {
@@ -285,22 +288,14 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
-/// Fixed gas price of `1`.
-pub struct FixedGasPrice;
-
-impl FeeCalculator for FixedGasPrice {
-	fn min_gas_price() -> U256 {
-		// Gas price is always one token per gas.
-		1.into()
-	}
-}
 
 parameter_types! {
 	pub const ChainId: u64 = 123;
+	pub BlockGasLimit: U256 = U256::from(u32::max_value());
 }
 
 impl pallet_vm::Config for Runtime {
-	type FeeCalculator = FixedGasPrice;
+	type FeeCalculator = pallet_dynamic_fee::Module<Self>;
 	type GasWeightMapping = ();
 	type CallOrigin = EnsureAddressTruncated;
 	type WithdrawOrigin = EnsureAddressTruncated;
@@ -313,8 +308,14 @@ impl pallet_vm::Config for Runtime {
 		pallet_vm_precompile_simple::Sha256,
 		pallet_vm_precompile_simple::Ripemd160,
 		pallet_vm_precompile_simple::Identity,
+		pallet_vm_precompile_modexp::Modexp,
+		pallet_vm_precompile_simple::ECRecoverPublicKey,
+		pallet_vm_precompile_sha3fips::Sha3FIPS256,
+		pallet_vm_precompile_sha3fips::Sha3FIPS512,
 	);
 	type ChainId = ChainId;
+	type BlockGasLimit = BlockGasLimit;
+	type OnChargeTransaction = ();
 }
 
 pub struct EthereumFindAuthor<F>(PhantomData<F>);
@@ -331,15 +332,18 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for EthereumFindAuthor<F>
 	}
 }
 
-parameter_types! {
-	pub BlockGasLimit: U256 = U256::from(u32::max_value());
-}
-
 impl pallet_ethereum::Config for Runtime {
 	type Event = Event;
 	type FindAuthor = EthereumFindAuthor<Aura>;
 	type StateRoot = pallet_ethereum::IntermediateStateRoot;
-	type BlockGasLimit = BlockGasLimit;
+}
+
+frame_support::parameter_types! {
+	pub BoundDivision: U256 = U256::from(1024);
+}
+
+impl pallet_dynamic_fee::Config for Runtime {
+	type MinGasPriceBoundDivisor = BoundDivision;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -355,12 +359,13 @@ construct_runtime!(
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		ValidatorSet: pallet_validator_set::{Module, Call, Storage, Event<T>, Config<T>},
-		Aura: pallet_aura::{Module, Config<T>, Inherent},
+		Aura: pallet_aura::{Module, Config<T>},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		Ethereum: pallet_ethereum::{Module, Call, Storage, Event, Config, ValidateUnsigned},
-		VM: pallet_vm::{Module, Config, Call, Storage, Event<T>},
+		EVM: pallet_vm::{Module, Config, Call, Storage, Event<T>},
+		DynamicFee: pallet_dynamic_fee::{Module, Call, Storage, Config, Inherent},
 	}
 );
 
@@ -455,7 +460,7 @@ impl_runtime_apis! {
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
-			RandomnessCollectiveFlip::random_seed()
+			RandomnessCollectiveFlip::random_seed().0
 		}
 	}
 
@@ -496,7 +501,7 @@ impl_runtime_apis! {
 		}
 
 		fn account_basic(address: H160) -> ETHAccount {
-			VM::account_basic(&address)
+			EVM::account_basic(&address)
 		}
 
 		fn gas_price() -> U256 {
@@ -504,7 +509,7 @@ impl_runtime_apis! {
 		}
 
 		fn account_code_at(address: H160) -> Vec<u8> {
-			VM::account_codes(address)
+			EVM::account_codes(address)
 		}
 
 		fn author() -> H160 {
@@ -514,7 +519,7 @@ impl_runtime_apis! {
 		fn storage_at(address: H160, index: U256) -> H256 {
 			let mut tmp = [0u8; 32];
 			index.to_big_endian(&mut tmp);
-			VM::account_storages(address, H256::from_slice(&tmp[..]))
+			EVM::account_storages(address, H256::from_slice(&tmp[..]))
 		}
 
 		fn call(

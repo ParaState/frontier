@@ -1,15 +1,13 @@
-use sp_core::{Pair, Public, sr25519};
+use std::{str::FromStr, collections::BTreeMap};
+use sp_core::{H160, U256, Pair, Public, sr25519};
 use frontier_template_runtime::{
-	AccountId, AuraConfig, BalancesConfig, VMConfig, EthereumConfig, GenesisConfig, GrandpaConfig,
+	AccountId, AuraConfig, BalancesConfig, EVMConfig, EthereumConfig, GenesisConfig, GrandpaConfig,
 	SudoConfig, SystemConfig, WASM_BINARY, Signature, opaque::SessionKeys, ValidatorSetConfig, SessionConfig
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
-use std::collections::BTreeMap;
-use sp_core::{U256, H160};
-use std::str::FromStr;
 use pallet_vm::GenesisAccount as ETHAccount;
 
 // The URL for the telemetry server.
@@ -42,11 +40,11 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
 }
 
 /// Generate an Aura authority key.
-pub fn authority_keys_from_seed(s: &str) -> (AccountId, AuraId, GrandpaId) {
+pub fn authority_keys_from_seed(seed: &str) -> (AccountId, AuraId, GrandpaId) {
 	(
-		get_account_id_from_seed::<sr25519::Public>(s),
-		get_from_seed::<AuraId>(s),
-		get_from_seed::<GrandpaId>(s),
+		get_account_id_from_seed::<sr25519::Public>(seed),
+		get_from_seed::<AuraId>(seed),
+		get_from_seed::<GrandpaId>(seed),
 	)
 }
 
@@ -146,43 +144,49 @@ fn testnet_genesis(
 	_enable_println: bool,
 ) -> GenesisConfig {
 	let mut vm_genesis = BTreeMap::new();
-	vm_genesis.insert(H160::from_str(&"0x6be02d1d3665660d22ff9624b7be0551ee1ac91b").unwrap(), ETHAccount {
-		nonce: U256::zero(),
-		balance: "0x115eec47f6cf7e35000000".into(), // 21M Ether
-		storage: BTreeMap::new(),
-		code: [].into(),
-	});
+	vm_genesis.insert(
+		H160::from_str("6be02d1d3665660d22ff9624b7be0551ee1ac91b")
+			.expect("internal H160 is valid; qed"),
+		ETHAccount {
+			balance: U256::from_str("0x115eec47f6cf7e35000000")
+				.expect("internal U256 is valid; qed"),
+			code: Default::default(),
+			nonce: Default::default(),
+			storage: Default::default(),
+		}
+	);
 	GenesisConfig {
-		frame_system: Some(SystemConfig {
+		frame_system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
-		}),
-		pallet_balances: Some(BalancesConfig {
+		},
+		pallet_balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
-		}),
-		pallet_validator_set: Some(ValidatorSetConfig {
+		},
+		pallet_validator_set: ValidatorSetConfig {
 			validators: initial_authorities.iter().map(|x| x.0.clone()).collect::<Vec<_>>(),
-		}),
-		pallet_session: Some(SessionConfig {
+		},
+		pallet_session: SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.0.clone(), session_keys(x.1.clone(), x.2.clone()))
 			}).collect::<Vec<_>>(),
-		}),
-		pallet_aura: Some(AuraConfig {
+		},
+		pallet_aura: AuraConfig {
 			authorities: vec![],
-		}),
-		pallet_grandpa: Some(GrandpaConfig {
+		},
+		pallet_grandpa: GrandpaConfig {
 			authorities: vec![],
-		}),
-		pallet_sudo: Some(SudoConfig {
+		},
+		pallet_sudo: SudoConfig {
 			// Assign network admin rights.
 			key: root_key,
-		}),
-		pallet_vm: Some(VMConfig {
+		},
+		pallet_vm: EVMConfig {
 			accounts: vm_genesis,
-		}),
-		pallet_ethereum: Some(EthereumConfig {}),
+		},
+		pallet_ethereum: EthereumConfig {},
+		pallet_dynamic_fee: Default::default(),
 	}
 }

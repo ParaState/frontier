@@ -25,11 +25,13 @@
 
 use frame_support::{
 	decl_module, decl_storage, decl_error, decl_event,
-	traits::Get, traits::FindAuthor, weights::Weight,
+	traits::Get, traits::FindAuthor,
+	weights::{Pays, PostDispatchInfo, Weight},
 	dispatch::DispatchResultWithPostInfo,
 };
 use sp_std::prelude::*;
 use frame_system::ensure_none;
+use frame_support::ensure;
 use ethereum_types::{H160, H64, H256, U256, Bloom, BloomInput};
 use sp_runtime::{
 	transaction_validity::{
@@ -39,10 +41,11 @@ use sp_runtime::{
 };
 use evm::ExitReason;
 use fp_vm::{CallOrCreateInfo, ExtendExitReason, EVMCStatusCode};
-use pallet_vm::{Runner, GasWeightMapping};
+use pallet_vm::{Runner, GasWeightMapping, FeeCalculator};
 use sha3::{Digest, Keccak256};
 use codec::{Encode, Decode};
-use fp_consensus::{FRONTIER_ENGINE_ID, ConsensusLog};
+use fp_consensus::{FRONTIER_ENGINE_ID, PostLog, PreLog};
+use fp_storage::PALLET_ETHEREUM_SCHEMA;
 
 pub use fp_rpc::TransactionStatus;
 pub use ethereum::{Transaction, Log, Block, Receipt, TransactionAction, TransactionMessage};
@@ -57,6 +60,19 @@ mod mock;
 pub enum ReturnValue {
 	Bytes(Vec<u8>),
 	Hash(H160),
+}
+
+/// The schema version for Pallet Ethereum's storage
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EthereumStorageSchema {
+	Undefined,
+	V1,
+}
+
+impl Default for EthereumStorageSchema {
+	fn default() -> Self {
+		Self::Undefined
+	}
 }
 
 /// A type alias for the balance type from this pallet's point of view.
@@ -79,8 +95,6 @@ pub trait Config: frame_system::Config<Hash=H256> + pallet_balances::Config + pa
 	type FindAuthor: FindAuthor<H160>;
 	/// How Ethereum state root is calculated.
 	type StateRoot: Get<H256>;
-	/// The block gas limit. Can be a simple constant, or an adjustment algorithm in another pallet.
-	type BlockGasLimit: Get<U256>;
 }
 
 decl_storage! {
@@ -97,7 +111,11 @@ decl_storage! {
 	}
 	add_extra_genesis {
 		build(|_config: &GenesisConfig| {
-			<Module<T>>::store_block();
+			// Calculate the ethereum genesis block
+			<Module<T>>::store_block(false, U256::zero());
+
+			// Initialize the storage schema at the well known key.
+			frame_support::storage::unhashed::put::<EthereumStorageSchema>(&PALLET_ETHEREUM_SCHEMA, &EthereumStorageSchema::V1);
 		});
 	}
 }
@@ -116,6 +134,8 @@ decl_error! {
 	pub enum Error for Module<T: Config> {
 		/// Signature is invalid.
 		InvalidSignature,
+		/// Pre-log is present, therefore transact is not allowed.
+		PreLogExists,
 	}
 }
 
@@ -130,94 +150,32 @@ decl_module! {
 		fn transact(origin, transaction: ethereum::Transaction) -> DispatchResultWithPostInfo {
 			ensure_none(origin)?;
 
-			let source = Self::recover_signer(&transaction)
-				.ok_or_else(|| Error::<T>::InvalidSignature)?;
-
-			let transaction_hash = H256::from_slice(
-				Keccak256::digest(&rlp::encode(&transaction)).as_slice()
-			);
-			let transaction_index = Pending::get().len() as u32;
-
-			let (to, contract_address, info) = Self::execute(
-				source,
-				transaction.input.clone(),
-				transaction.value,
-				transaction.gas_limit,
-				Some(transaction.gas_price),
-				Some(transaction.nonce),
-				transaction.action,
-				None,
-			)?;
-
-			let (reason, status, used_gas) = match info {
-				CallOrCreateInfo::Call(info) => {
-					(info.exit_reason, TransactionStatus {
-						transaction_hash,
-						transaction_index,
-						from: source,
-						to,
-						contract_address: None,
-						logs: info.logs.clone(),
-						logs_bloom: {
-							let mut bloom: Bloom = Bloom::default();
-							Self::logs_bloom(
-								info.logs,
-								&mut bloom
-							);
-							bloom
-						},
-					}, info.used_gas)
-				},
-				CallOrCreateInfo::Create(info) => {
-					(info.exit_reason, TransactionStatus {
-						transaction_hash,
-						transaction_index,
-						from: source,
-						to,
-						contract_address: Some(info.value),
-						logs: info.logs.clone(),
-						logs_bloom: {
-							let mut bloom: Bloom = Bloom::default();
-							Self::logs_bloom(
-								info.logs,
-								&mut bloom
-							);
-							bloom
-						},
-					}, info.used_gas)
-				},
-			};
-
-			let receipt = ethereum::Receipt {
-				state_root: match reason {
-					ExtendExitReason::ExitReason(ExitReason::Succeed(_)) => H256::from_low_u64_be(1),
-					ExtendExitReason::ExitReason(ExitReason::Error(_)) => H256::from_low_u64_le(0),
-					ExtendExitReason::ExitReason(ExitReason::Revert(_)) => H256::from_low_u64_le(0),
-					ExtendExitReason::ExitReason(ExitReason::Fatal(_)) => H256::from_low_u64_le(0),
-					ExtendExitReason::EVMCStatusCode(s) => {
-						match s {
-							EVMCStatusCode::EvmcSuccess => H256::from_low_u64_be(1),
-							_ => H256::from_low_u64_le(0),
-						}
-					}
-				},
-				used_gas,
-				logs_bloom: status.clone().logs_bloom,
-				logs: status.clone().logs,
-			};
-
-			Pending::append((transaction, status, receipt));
-
-			Self::deposit_event(Event::Executed(source, contract_address.unwrap_or_default(), transaction_hash, reason.into()));
-			Ok(Some(T::GasWeightMapping::gas_to_weight(used_gas.unique_saturated_into())).into())
+			Self::do_transact(transaction)
 		}
 
 		fn on_finalize(n: T::BlockNumber) {
-			<Module<T>>::store_block();
+			<Module<T>>::store_block(
+				fp_consensus::find_pre_log(&frame_system::Module::<T>::digest()).is_err(),
+				U256::from(
+					UniqueSaturatedInto::<u128>::unique_saturated_into(
+						frame_system::Module::<T>::block_number()
+					)
+				),
+			);
 		}
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			Pending::kill();
+
+			if let Ok(log) = fp_consensus::find_pre_log(&frame_system::Module::<T>::digest()) {
+				let PreLog::Block(block) = log;
+
+				for transaction in block.transactions {
+					Self::do_transact(transaction)
+						.expect("pre-block transaction verification failed; the block cannot be built");
+				}
+			}
+
 			0
 		}
 	}
@@ -229,6 +187,7 @@ enum TransactionValidationError {
 	UnknownError,
 	InvalidChainId,
 	InvalidSignature,
+	InvalidGasLimit,
 }
 
 impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
@@ -245,6 +204,10 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			let origin = Self::recover_signer(&transaction)
 				.ok_or_else(|| InvalidTransaction::Custom(TransactionValidationError::InvalidSignature as u8))?;
 
+			if transaction.gas_limit >= T::BlockGasLimit::get() {
+				return InvalidTransaction::Custom(TransactionValidationError::InvalidGasLimit as u8).into();
+			}
+
 			let account_data = pallet_vm::Module::<T>::account_basic(&origin);
 
 			if transaction.nonce < account_data.nonce {
@@ -252,13 +215,25 @@ impl<T: Config> frame_support::unsigned::ValidateUnsigned for Module<T> {
 			}
 
 			let fee = transaction.gas_price.saturating_mul(transaction.gas_limit);
+			let total_payment = transaction.value.saturating_add(fee);
+			if account_data.balance < total_payment {
+				return InvalidTransaction::Payment.into();
+			}
 
-			if account_data.balance < fee {
+			let min_gas_price = T::FeeCalculator::min_gas_price();
+
+			if transaction.gas_price < min_gas_price {
 				return InvalidTransaction::Payment.into();
 			}
 
 			let mut builder = ValidTransactionBuilder::default()
-				.and_provides((origin, transaction.nonce));
+				.and_provides((origin, transaction.nonce))
+				.priority(if min_gas_price == U256::zero() {
+						0
+					} else {
+						let target_gas = (transaction.gas_limit * transaction.gas_price) / min_gas_price;
+						T::GasWeightMapping::gas_to_weight(target_gas.unique_saturated_into())
+				});
 
 			if transaction.nonce > account_data.nonce {
 				if let Some(prev_nonce) = transaction.nonce.checked_sub(1.into()) {
@@ -286,7 +261,7 @@ impl<T: Config> Module<T> {
 		Some(H160::from(H256::from_slice(Keccak256::digest(&pubkey).as_slice())))
 	}
 
-	fn store_block() {
+	fn store_block(post_log: bool, block_number: U256) {
 		let mut transactions = Vec::new();
 		let mut statuses = Vec::new();
 		let mut receipts = Vec::new();
@@ -312,11 +287,7 @@ impl<T: Config> Module<T> {
 			), // TODO: check receipts hash.
 			logs_bloom,
 			difficulty: U256::zero(),
-			number: U256::from(
-				UniqueSaturatedInto::<u128>::unique_saturated_into(
-					frame_system::Module::<T>::block_number()
-				)
-			),
+			number: block_number,
 			gas_limit: T::BlockGasLimit::get(),
 			gas_used: receipts.clone().into_iter().fold(U256::zero(), |acc, r| acc + r.used_gas),
 			timestamp: UniqueSaturatedInto::<u64>::unique_saturated_into(
@@ -333,11 +304,13 @@ impl<T: Config> Module<T> {
 		CurrentReceipts::put(receipts.clone());
 		CurrentTransactionStatuses::put(statuses.clone());
 
-		let digest = DigestItem::<T::Hash>::Consensus(
-			FRONTIER_ENGINE_ID,
-			ConsensusLog::PostHashes(fp_consensus::PostHashes::from_block(block)).encode(),
-		);
-		frame_system::Module::<T>::deposit_log(digest.into());
+		if post_log {
+			let digest = DigestItem::<T::Hash>::Consensus(
+				FRONTIER_ENGINE_ID,
+				PostLog::Hashes(fp_consensus::Hashes::from_block(block)).encode(),
+			);
+			frame_system::Module::<T>::deposit_log(digest.into());
+		}
 	}
 
 	fn logs_bloom(logs: Vec<Log>, bloom: &mut Bloom) {
@@ -347,6 +320,97 @@ impl<T: Config> Module<T> {
 				bloom.accrue(BloomInput::Raw(&topic[..]));
 			}
 		}
+	}
+
+	fn do_transact(transaction: ethereum::Transaction) -> DispatchResultWithPostInfo {
+		ensure!(
+			fp_consensus::find_pre_log(&frame_system::Module::<T>::digest()).is_err(),
+			Error::<T>::PreLogExists,
+		);
+
+		let source = Self::recover_signer(&transaction)
+			.ok_or_else(|| Error::<T>::InvalidSignature)?;
+
+		let transaction_hash = H256::from_slice(
+			Keccak256::digest(&rlp::encode(&transaction)).as_slice()
+		);
+		let transaction_index = Pending::get().len() as u32;
+
+		let (to, contract_address, info) = Self::execute(
+			source,
+			transaction.input.clone(),
+			transaction.value,
+			transaction.gas_limit,
+			Some(transaction.gas_price),
+			Some(transaction.nonce),
+			transaction.action,
+			None,
+		)?;
+
+		let (reason, status, used_gas) = match info {
+			CallOrCreateInfo::Call(info) => {
+				(info.exit_reason, TransactionStatus {
+					transaction_hash,
+					transaction_index,
+					from: source,
+					to,
+					contract_address: None,
+					logs: info.logs.clone(),
+					logs_bloom: {
+						let mut bloom: Bloom = Bloom::default();
+						Self::logs_bloom(
+							info.logs,
+							&mut bloom
+						);
+						bloom
+					},
+				}, info.used_gas)
+			},
+			CallOrCreateInfo::Create(info) => {
+				(info.exit_reason, TransactionStatus {
+					transaction_hash,
+					transaction_index,
+					from: source,
+					to,
+					contract_address: Some(info.value),
+					logs: info.logs.clone(),
+					logs_bloom: {
+						let mut bloom: Bloom = Bloom::default();
+						Self::logs_bloom(
+							info.logs,
+							&mut bloom
+						);
+						bloom
+					},
+				}, info.used_gas)
+			},
+		};
+
+		let receipt = ethereum::Receipt {
+			state_root: match reason {
+				ExtendExitReason::ExitReason(ExitReason::Succeed(_)) => H256::from_low_u64_be(1),
+				ExtendExitReason::ExitReason(ExitReason::Error(_)) => H256::from_low_u64_le(0),
+				ExtendExitReason::ExitReason(ExitReason::Revert(_)) => H256::from_low_u64_le(0),
+				ExtendExitReason::ExitReason(ExitReason::Fatal(_)) => H256::from_low_u64_le(0),
+				ExtendExitReason::EVMCStatusCode(s) => {
+					match s {
+						EVMCStatusCode::EvmcSuccess => H256::from_low_u64_be(1),
+						_ => H256::from_low_u64_le(0),
+					}
+				}
+			},
+			used_gas,
+			logs_bloom: status.clone().logs_bloom,
+			logs: status.clone().logs,
+		};
+
+		Pending::append((transaction, status, receipt));
+
+		Self::deposit_event(Event::Executed(source, contract_address.unwrap_or_default(), transaction_hash, reason.into()));
+		Ok(PostDispatchInfo {
+			actual_weight: Some(T::GasWeightMapping::gas_to_weight(used_gas.unique_saturated_into())),
+			pays_fee: Pays::No,
+		}).into()
 	}
 
 	/// Get the author using the FindAuthor trait.

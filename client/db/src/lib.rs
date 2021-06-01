@@ -58,15 +58,21 @@ impl DatabaseSettingsSrc {
 }
 
 pub(crate) mod columns {
-	pub const NUM_COLUMNS: u32 = 3;
+	pub const NUM_COLUMNS: u32 = 4;
 
 	pub const META: u32 = 0;
 	pub const BLOCK_MAPPING: u32 = 1;
 	pub const TRANSACTION_MAPPING: u32 = 2;
+	pub const SYNCED_MAPPING: u32 = 3;
+}
+
+pub(crate) mod static_keys {
+	pub const CURRENT_SYNCING_TIPS: &[u8] = b"CURRENT_SYNCING_TIPS";
 }
 
 pub struct Backend<Block: BlockT> {
-	mapping_db: Arc<MappingDb<Block>>,
+	meta: Arc<MetaDb<Block>>,
+	mapping: Arc<MappingDb<Block>>,
 }
 
 impl<Block: BlockT> Backend<Block> {
@@ -74,16 +80,52 @@ impl<Block: BlockT> Backend<Block> {
 		let db = utils::open_database(config)?;
 
 		Ok(Self {
-			mapping_db: Arc::new(MappingDb {
+			mapping: Arc::new(MappingDb {
 				db: db.clone(),
 				write_lock: Arc::new(Mutex::new(())),
 				_marker: PhantomData,
-			})
+			}),
+			meta: Arc::new(MetaDb {
+				db: db.clone(),
+				_marker: PhantomData,
+			}),
 		})
 	}
 
-	pub fn mapping_db(&self) -> &Arc<MappingDb<Block>> {
-		&self.mapping_db
+	pub fn mapping(&self) -> &Arc<MappingDb<Block>> {
+		&self.mapping
+	}
+
+	pub fn meta(&self) -> &Arc<MetaDb<Block>> {
+		&self.meta
+	}
+}
+
+pub struct MetaDb<Block: BlockT> {
+	db: Arc<dyn Database<DbHash>>,
+	_marker: PhantomData<Block>,
+}
+
+impl<Block: BlockT> MetaDb<Block> {
+	pub fn current_syncing_tips(&self) -> Result<Vec<Block::Hash>, String> {
+		match self.db.get(crate::columns::META, &crate::static_keys::CURRENT_SYNCING_TIPS) {
+			Some(raw) => Ok(Vec::<Block::Hash>::decode(&mut &raw[..]).map_err(|e| format!("{:?}", e))?),
+			None => Ok(Vec::new()),
+		}
+	}
+
+	pub fn write_current_syncing_tips(&self, tips: Vec<Block::Hash>) -> Result<(), String> {
+		let mut transaction = sp_database::Transaction::new();
+
+		transaction.set(
+			crate::columns::META,
+			crate::static_keys::CURRENT_SYNCING_TIPS,
+			&tips.encode(),
+		);
+
+		self.db.commit(transaction).map_err(|e| format!("{:?}", e))?;
+
+		Ok(())
 	}
 }
 
@@ -107,13 +149,23 @@ pub struct MappingDb<Block: BlockT> {
 }
 
 impl<Block: BlockT> MappingDb<Block> {
-	pub fn block_hashes(
+	pub fn is_synced(
+		&self,
+		block_hash: &Block::Hash,
+	) -> Result<bool, String> {
+		match self.db.get(crate::columns::SYNCED_MAPPING, &block_hash.encode()) {
+			Some(raw) => Ok(bool::decode(&mut &raw[..]).map_err(|e| format!("{:?}", e))?),
+			None => Ok(false),
+		}
+	}
+
+	pub fn block_hash(
 		&self,
 		ethereum_block_hash: &H256,
-	) -> Result<Vec<Block::Hash>, String> {
+	) -> Result<Option<Block::Hash>, String> {
 		match self.db.get(crate::columns::BLOCK_MAPPING, &ethereum_block_hash.encode()) {
-			Some(raw) => Ok(Vec::<Block::Hash>::decode(&mut &raw[..]).map_err(|e| format!("{:?}", e))?),
-			None => Ok(Vec::new()),
+			Some(raw) => Ok(Some(Block::Hash::decode(&mut &raw[..]).map_err(|e| format!("{:?}", e))?)),
+			None => Ok(None),
 		}
 	}
 
@@ -127,6 +179,25 @@ impl<Block: BlockT> MappingDb<Block> {
 		}
 	}
 
+	pub fn write_none(
+		&self,
+		block_hash: Block::Hash
+	) -> Result<(), String> {
+		let _lock = self.write_lock.lock();
+
+		let mut transaction = sp_database::Transaction::new();
+
+		transaction.set(
+			crate::columns::SYNCED_MAPPING,
+			&block_hash.encode(),
+			&true.encode(),
+		);
+
+		self.db.commit(transaction).map_err(|e| format!("{:?}", e))?;
+
+		Ok(())
+	}
+
 	pub fn write_hashes(
 		&self,
 		commitment: MappingCommitment<Block>,
@@ -135,12 +206,10 @@ impl<Block: BlockT> MappingDb<Block> {
 
 		let mut transaction = sp_database::Transaction::new();
 
-		let mut block_hashes = self.block_hashes(&commitment.ethereum_block_hash)?;
-		block_hashes.push(commitment.block_hash);
 		transaction.set(
 			crate::columns::BLOCK_MAPPING,
 			&commitment.ethereum_block_hash.encode(),
-			&block_hashes.encode()
+			&commitment.block_hash.encode()
 		);
 
 		for (i, ethereum_transaction_hash) in commitment.ethereum_transaction_hashes.into_iter().enumerate() {
@@ -156,6 +225,12 @@ impl<Block: BlockT> MappingDb<Block> {
 				&metadata.encode(),
 			);
 		}
+
+		transaction.set(
+			crate::columns::SYNCED_MAPPING,
+			&commitment.block_hash.encode(),
+			&true.encode(),
+		);
 
 		self.db.commit(transaction).map_err(|e| format!("{:?}", e))?;
 

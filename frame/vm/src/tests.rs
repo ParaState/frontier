@@ -22,6 +22,7 @@ use super::*;
 use std::{str::FromStr, collections::BTreeMap};
 use frame_support::{
 	assert_ok, impl_outer_origin, parameter_types, impl_outer_dispatch,
+	traits::GenesisBuild,
 };
 use sp_core::{Blake2Hasher, H256};
 use sp_runtime::{
@@ -36,6 +37,18 @@ impl_outer_origin! {
 impl_outer_dispatch! {
 	pub enum OuterCall for Test where origin: Origin {
 		self::EVM,
+	}
+}
+
+pub struct PalletInfo;
+
+impl frame_support::traits::PalletInfo for PalletInfo {
+	fn index<P: 'static>() -> Option<usize> {
+		return Some(0)
+	}
+
+	fn name<P: 'static>() -> Option<&'static str> {
+		return Some("TestName")
 	}
 }
 
@@ -63,7 +76,7 @@ impl frame_system::Config for Test {
 	type Event = ();
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
@@ -114,14 +127,16 @@ impl Config for Test {
 	type Currency = Balances;
 	type Runner = crate::runner::stack::Runner<Self>;
 
-	type Event = Event<Test>;
+	type Event = ();
 	type Precompiles = ();
 	type ChainId = ();
+	type BlockGasLimit = ();
+	type OnChargeTransaction = ();
 }
 
-type System = frame_system::Module<Test>;
-type Balances = pallet_balances::Module<Test>;
-type EVM = Module<Test>;
+type System = frame_system::Pallet<Test>;
+type Balances = pallet_balances::Pallet<Test>;
+type EVM = Pallet<Test>;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
@@ -151,7 +166,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	);
 
 	pallet_balances::GenesisConfig::<Test>::default().assimilate_storage(&mut t).unwrap();
-	GenesisConfig { accounts }.assimilate_storage::<Test>(&mut t).unwrap();
+	<GenesisConfig as GenesisBuild<Test>>::assimilate_storage(&GenesisConfig { accounts }, &mut t).unwrap();
 	t.into()
 }
 
@@ -179,5 +194,26 @@ fn fail_call_return_ok() {
 			U256::default(),
 			None,
 		));
+	});
+}
+
+#[test]
+fn fee_deduction() {
+	new_test_ext().execute_with(|| {
+		// Create an EVM address and the corresponding Substrate address that will be charged fees and refunded
+		let evm_addr = H160::from_str("1000000000000000000000000000000000000003").unwrap();
+		let substrate_addr = <Test as Config>::AddressMapping::into_account_id(evm_addr);
+
+		// Seed account
+		let _ = <Test as Config>::Currency::deposit_creating(&substrate_addr, 100);
+		assert_eq!(Balances::free_balance(&substrate_addr), 100);
+
+		// Deduct fees as 10 units
+		let imbalance = <<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::withdraw_fee(&evm_addr, U256::from(10)).unwrap();
+		assert_eq!(Balances::free_balance(&substrate_addr), 90);
+
+		// Refund fees as 5 units
+		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), imbalance).unwrap();
+		assert_eq!(Balances::free_balance(&substrate_addr), 95);
 	});
 }
