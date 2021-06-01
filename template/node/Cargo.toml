@@ -31,6 +31,7 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "front
 sc-executor = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sc-service = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sp-inherents = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
+sp-chain-spec = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sc-network = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
@@ -50,6 +51,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "fr
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 sc-telemetry = { git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
+serde_json = "1.0.41"
 
 fc-consensus = { path = "../../client/consensus" }
 fp-consensus = { path = "../../primitives/consensus" }
