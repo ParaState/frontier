@@ -17,6 +17,12 @@
 
 //! # VM Pallet
 //!
+//! ## Parastate Patch Notes
+//! The VM pallet allow to use WasmEdge as a VM in the substrate-base blockchain.
+//! This chain runs with POA consensus, such the economy is based on the tokens in the EVM.
+//! Such that the calls to execute EVM with the frontier currency as gas fee are disabled.
+//! Authority can set up their ethereum address in this pallet.
+//!
 //! The VM pallet allows unmodified VM code to be executed in a Substrate-based blockchain.
 //! - [`vm::Config`]
 //!
@@ -133,6 +139,16 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(0)]
+		pub fn set_eth_addr(origin: OriginFor<T>, eth_addr: H160) -> DispatchResultWithPostInfo {
+			let sender = ensure_signed(origin)?;
+
+			Self::deposit_event(Event::EthAddrSet((sender.clone(), eth_addr)));
+			<EthAddrOf<T>>::insert(&sender, eth_addr);
+
+			Ok(().into())
+		}
+
 		/// Withdraw balance from EVM into currency/balances pallet.
 		#[pallet::weight(0)]
 		fn withdraw(origin: OriginFor<T>, address: H160, value: BalanceOf<T>) -> DispatchResult {
@@ -315,6 +331,8 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
+		/// Setup the etherem address for block reward
+		EthAddrSet((T::AccountId, H160)),
 		/// Ethereum events from contracts.
 		Log(Log),
 		/// A contract has been created at given \[address\].
@@ -389,6 +407,10 @@ pub mod pallet {
 			}
 		}
 	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn eth_addr)]
+	pub type EthAddrOf<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, H160>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn account_codes)]

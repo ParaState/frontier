@@ -217,3 +217,14 @@ fn fee_deduction() {
 		assert_eq!(Balances::free_balance(&substrate_addr), 95);
 	});
 }
+
+#[test]
+fn set_eth_addr() {
+	new_test_ext().execute_with(|| {
+		let evm_addr = H160::from_str("1000000000000000000000000000000000000001").unwrap();
+		let sender: AccountId32 = [0u8;32].into();
+		assert_eq!(EVM::eth_addr(&sender), None);
+		assert_ok!(EVM::set_eth_addr(Origin::signed(sender.clone()), evm_addr));
+		assert_eq!(EVM::eth_addr(&sender), Some(evm_addr));
+	});
+}
