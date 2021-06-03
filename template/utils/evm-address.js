@@ -6,14 +6,16 @@ module.exports = () => {
     console.error(help);
     process.exit(9);
   }
-  
+
   const address = process.argv[3];
   if (!address.match(/^[A-z0-9]{48}$/)) {
     console.error('Please enter a valid Substrate address.');
     console.error(help);
     process.exit(9);
   }
-  
-  const crypto = require('@polkadot/util-crypto');
-  return `0x${crypto.blake2AsHex(crypto.decodeAddress(address), 256).substring(26)}`;
+
+  const { u8aToHex } = require("@polkadot/util");
+  const { addressToEvm, evmToAddress } = require("@polkadot/util-crypto");
+
+  return u8aToHex(addressToEvm(address));
 };
