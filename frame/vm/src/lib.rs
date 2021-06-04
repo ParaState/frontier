@@ -180,6 +180,7 @@ pub mod pallet {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
 			// Disable the call from polkadot.js
+			#[cfg(not(feature = "debug"))]
 			ensure!(false, Error::<T>::Forbidden);
 
 			let info = T::Runner::call(
@@ -226,6 +227,7 @@ pub mod pallet {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
 			// Disable the call from polkadot.js
+			#[cfg(not(feature = "debug"))]
 			ensure!(false, Error::<T>::Forbidden);
 
 			let info = T::Runner::create(
@@ -283,6 +285,7 @@ pub mod pallet {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
 			// Disable the call from polkadot.js
+			#[cfg(not(feature = "debug"))]
 			ensure!(false, Error::<T>::Forbidden);
 
 			let info = T::Runner::create2(
