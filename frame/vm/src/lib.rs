@@ -70,6 +70,7 @@ use codec::{Encode, Decode};
 use serde::{Serialize, Deserialize};
 use frame_support::weights::{Weight, PostDispatchInfo};
 use frame_support::traits::{Currency, ExistenceRequirement, WithdrawReasons, Imbalance, OnUnbalanced};
+use frame_support::ensure;
 use frame_system::RawOrigin;
 use sp_core::{U256, H256, H160, Hasher};
 use sp_runtime::{AccountId32, traits::{UniqueSaturatedInto, BadOrigin, Saturating}};
@@ -162,6 +163,9 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
 
+			// Disable the call from polkadot.js
+			ensure!(false, Error::<T>::Forbidden);
+
 			let info = T::Runner::call(
 				source,
 				target,
@@ -204,6 +208,9 @@ pub mod pallet {
 			nonce: Option<U256>,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
+
+			// Disable the call from polkadot.js
+			ensure!(false, Error::<T>::Forbidden);
 
 			let info = T::Runner::create(
 				source,
@@ -258,6 +265,9 @@ pub mod pallet {
 			nonce: Option<U256>,
 		) -> DispatchResultWithPostInfo {
 			T::CallOrigin::ensure_address_origin(&source, origin)?;
+
+			// Disable the call from polkadot.js
+			ensure!(false, Error::<T>::Forbidden);
 
 			let info = T::Runner::create2(
 				source,
@@ -335,6 +345,9 @@ pub mod pallet {
 		GasPriceTooLow,
 		/// Nonce is invalid
 		InvalidNonce,
+		/// EVM is forbidden for the call from pallet,
+		/// and only allow from traditional Ethereum client
+		Forbidden,
 	}
 
 	#[pallet::genesis_config]

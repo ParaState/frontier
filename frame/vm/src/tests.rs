@@ -21,7 +21,7 @@ use super::*;
 
 use std::{str::FromStr, collections::BTreeMap};
 use frame_support::{
-	assert_ok, impl_outer_origin, parameter_types, impl_outer_dispatch,
+	assert_ok, assert_err, impl_outer_origin, parameter_types, impl_outer_dispatch,
 	traits::GenesisBuild,
 };
 use sp_core::{Blake2Hasher, H256};
@@ -173,7 +173,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 #[test]
 fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(EVM::call(
+		assert_err!(EVM::call(
 			Origin::root(),
 			H160::default(),
 			H160::from_str("1000000000000000000000000000000000000001").unwrap(),
@@ -182,9 +182,9 @@ fn fail_call_return_ok() {
 			1000000,
 			U256::default(),
 			None,
-		));
+		), Error::<Test>::Forbidden);
 
-		assert_ok!(EVM::call(
+		assert_err!(EVM::call(
 			Origin::root(),
 			H160::default(),
 			H160::from_str("1000000000000000000000000000000000000002").unwrap(),
@@ -193,7 +193,7 @@ fn fail_call_return_ok() {
 			1000000,
 			U256::default(),
 			None,
-		));
+		), Error::<Test>::Forbidden);
 	});
 }
 
