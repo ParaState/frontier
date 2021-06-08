@@ -474,6 +474,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			},
 		)
 	}
+	fn mint(
+		miner: H160,
+		value: U256,
+		config: &evm::Config,
+	) -> Result<(), Self::Error> {
+		if_std! {
+			//TODO
+			return Ok(());
+		}
+		log::warn!(target: "vm", "SSVM only works with native code, you will not get the reward");
+		Ok(())
+	}
 }
 
 pub fn create_address(caller: H160, nonce: U256) -> H160 {

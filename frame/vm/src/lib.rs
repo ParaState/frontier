@@ -336,6 +336,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Setup the etherem address for block reward
 		EthAddrSet((T::AccountId, H160)),
+		/// Ethereum Reward to miner fail
+		EthRewardFailed(H160),
 		/// Ethereum events from contracts.
 		Log(Log),
 		/// A contract has been created at given \[address\].
@@ -760,4 +762,26 @@ impl<T> OnChargeEVMTransaction<T> for ()
 	) -> Result<(), Error<T>> {
 		EVMCurrencyAdapter::<<T as Config>::Currency, ()>::correct_and_deposit_fee(who, corrected_fee, already_withdrawn)
 	}
+}
+
+impl<T> pallet_authorship::EventHandler<T::AccountId, T::BlockNumber> for Module<T>
+where
+	T: Config + pallet_authorship::Config + pallet_session::Config,
+{
+	fn note_author(author: T::AccountId) {
+		if let Some(eth_addr) = <EthAddrOf<T>>::get(author) {
+			Self::reward(eth_addr);
+		}
+	}
+	fn note_uncle(_author: T::AccountId, _age: T::BlockNumber) {}
+}
+
+impl<T: Config> Module<T> {
+    pub(crate) fn reward(
+        eth_address: H160,
+    ) {
+        if T::Runner::mint(eth_address, U256::from(1), T::config()).is_err() {
+            Pallet::<T>::deposit_event(Event::<T>::EthRewardFailed(eth_address));
+        }
+    }
 }

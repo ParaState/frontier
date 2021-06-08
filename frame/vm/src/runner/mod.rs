@@ -56,4 +56,10 @@ pub trait Runner<T: Config> {
 		nonce: Option<U256>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, Self::Error>;
+
+	fn mint(
+		miner: H160,
+		value: U256,
+		config: &evm::Config,
+	) -> Result<(), Self::Error>;
 }
