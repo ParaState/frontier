@@ -1,0 +1,8 @@
+{
+  "name": "fund-to-new-validator",
+  "version": "1.0.0",
+  "dependencies": {
+    "@polkadot/api": "~4.8.1",
+    "@polkadot/keyring": "^6.7.1"
+  }
+}

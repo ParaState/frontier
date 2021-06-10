@@ -21,7 +21,7 @@ use super::*;
 
 use std::{str::FromStr, collections::BTreeMap};
 use frame_support::{
-	assert_ok, impl_outer_origin, parameter_types, impl_outer_dispatch,
+	assert_ok, assert_err, impl_outer_origin, parameter_types, impl_outer_dispatch,
 	traits::GenesisBuild,
 };
 use sp_core::{Blake2Hasher, H256};
@@ -170,6 +170,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	t.into()
 }
 
+#[cfg(feature = "debug")]
 #[test]
 fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
@@ -197,6 +198,34 @@ fn fail_call_return_ok() {
 	});
 }
 
+#[cfg(not(feature = "debug"))]
+#[test]
+fn fail_call_return_forbidden() {
+	new_test_ext().execute_with(|| {
+		assert_err!(EVM::call(
+			Origin::root(),
+			H160::default(),
+			H160::from_str("1000000000000000000000000000000000000001").unwrap(),
+			Vec::new(),
+			U256::default(),
+			1000000,
+			U256::default(),
+			None,
+		), Error::<Test>::Forbidden);
+
+		assert_err!(EVM::call(
+			Origin::root(),
+			H160::default(),
+			H160::from_str("1000000000000000000000000000000000000002").unwrap(),
+			Vec::new(),
+			U256::default(),
+			1000000,
+			U256::default(),
+			None,
+		), Error::<Test>::Forbidden);
+	});
+}
+
 #[test]
 fn fee_deduction() {
 	new_test_ext().execute_with(|| {
@@ -215,5 +244,16 @@ fn fee_deduction() {
 		// Refund fees as 5 units
 		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), imbalance).unwrap();
 		assert_eq!(Balances::free_balance(&substrate_addr), 95);
+	});
+}
+
+#[test]
+fn set_eth_addr() {
+	new_test_ext().execute_with(|| {
+		let evm_addr = H160::from_str("1000000000000000000000000000000000000001").unwrap();
+		let sender: AccountId32 = [0u8;32].into();
+		assert_eq!(EVM::eth_addr(&sender), None);
+		assert_ok!(EVM::set_eth_addr(Origin::signed(sender.clone()), evm_addr));
+		assert_eq!(EVM::eth_addr(&sender), Some(evm_addr));
 	});
 }

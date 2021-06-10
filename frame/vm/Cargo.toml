@@ -37,6 +37,7 @@ rustc-hex = { version = "2.1.0", default-features = false }
 
 [features]
 default = ["std"]
+debug = ["std"]
 std = [
 	"serde",
 	"codec/std",
