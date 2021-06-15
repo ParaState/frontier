@@ -149,6 +149,18 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		/// Set the benefit address for charge licence fee
+		#[pallet::weight(0)]
+		pub fn set_beneficiacry(
+			origin: OriginFor<T>,
+			address: H160,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			<BenefitAddr<T>>::mutate(|beneficiacry| *beneficiacry = address);
+			Self::deposit_event(Event::BenefitAddrSet(address));
+			Ok(().into())
+		}
+
 		/// Withdraw balance from EVM into currency/balances pallet.
 		#[pallet::weight(0)]
 		fn withdraw(origin: OriginFor<T>, address: H160, value: BalanceOf<T>) -> DispatchResult {
@@ -338,6 +350,8 @@ pub mod pallet {
 		EthAddrSet((T::AccountId, H160)),
 		/// Ethereum Reward to miner fail
 		EthRewardFailed(H160),
+		/// Setup the etherem address for gas fee beneficiacry
+		BenefitAddrSet(H160),
 		/// Ethereum events from contracts.
 		Log(Log),
 		/// A contract has been created at given \[address\].
@@ -418,6 +432,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn eth_addr)]
 	pub type EthAddrOf<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, H160>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn benefit_addr)]
+	pub type BenefitAddr<T: Config> = StorageValue<_, H160, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn account_codes)]
@@ -730,10 +748,9 @@ where
 			let refund_imbalance = C::deposit_into_existing(&account_id, refund_amount)
 				.unwrap_or_else(|_| C::PositiveImbalance::zero());
 			// merge the imbalance caused by paying the fees and refunding parts of it again.
-			let adjusted_paid = paid
-				.offset(refund_imbalance)
-				.map_err(|_| Error::<T>::BalanceLow)?;
-			OU::on_unbalanced(adjusted_paid);
+
+			let benefit_account = T::AddressMapping::into_account_id(<BenefitAddr<T>>::get());
+			C::deposit_creating(&benefit_account, corrected_fee.low_u128().unique_saturated_into());
 		}
 		Ok(())
 	}
