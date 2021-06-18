@@ -215,6 +215,18 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const UncleGenerations: BlockNumber = 5;
+}
+
+impl pallet_authorship::Config for Runtime {
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type UncleGenerations = UncleGenerations;
+	type FilterUncle = ();
+	type EventHandler = EVM;
+}
+
+
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 }
@@ -356,6 +368,7 @@ construct_runtime!(
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		ValidatorSet: pallet_validator_set::{Module, Call, Storage, Event<T>, Config<T>},

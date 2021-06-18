@@ -27,6 +27,7 @@ pallet-vm-precompile-simple = { default-features = false, path = "../../frame/vm
 pallet-vm-precompile-sha3fips = { default-features = false, path = "../../frame/vm/precompile/sha3fips" }
 pallet-vm-precompile-modexp = { default-features = false, path = "../../frame/vm/precompile/modexp" }
 pallet-aura = { version = "3.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
+pallet-authorship = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 pallet-balances = { version = "3.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 pallet-grandpa = { version = "3.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }
 pallet-randomness-collective-flip = { version = "3.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "frontier" }

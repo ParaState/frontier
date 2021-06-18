@@ -371,6 +371,8 @@ pub mod pallet {
 		/// EVM is forbidden for the call from pallet,
 		/// and only allow from traditional Ethereum client
 		Forbidden,
+		/// Reward miner failed
+		RewardFailed,
 	}
 
 	#[pallet::genesis_config]
@@ -780,8 +782,8 @@ impl<T: Config> Module<T> {
     pub(crate) fn reward(
         eth_address: H160,
     ) {
-        if T::Runner::mint(eth_address, U256::from(1), T::config()).is_err() {
-            Pallet::<T>::deposit_event(Event::<T>::EthRewardFailed(eth_address));
-        }
-    }
+		if T::Runner::mint(eth_address, U256::from(1000000000000000000u128), T::config()).is_err() {
+			Pallet::<T>::deposit_event(Event::<T>::EthRewardFailed(eth_address));
+		}
+	}
 }
