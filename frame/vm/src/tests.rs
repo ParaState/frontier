@@ -164,9 +164,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			],
 		}
 	);
+	let beneficiaries: Vec<H160> = vec![];
 
 	pallet_balances::GenesisConfig::<Test>::default().assimilate_storage(&mut t).unwrap();
-	<GenesisConfig as GenesisBuild<Test>>::assimilate_storage(&GenesisConfig { accounts }, &mut t).unwrap();
+	<GenesisConfig as GenesisBuild<Test>>::assimilate_storage(&GenesisConfig { accounts, beneficiaries }, &mut t).unwrap();
 	t.into()
 }
 
@@ -244,6 +245,75 @@ fn fee_deduction() {
 		// Refund fees as 5 units
 		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), imbalance).unwrap();
 		assert_eq!(Balances::free_balance(&substrate_addr), 95);
+	});
+}
+
+fn ten_units_imbalance(evm_addr: &H160) -> <<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::LiquidityInfo {
+	<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::withdraw_fee(&evm_addr, U256::from(10)).unwrap()
+}
+
+#[test]
+fn rotate_license_fee_beneficiaries() {
+	new_test_ext().execute_with(|| {
+		// Create an EVM address and the corresponding Substrate address that will be charged fees and refunded
+		let evm_addr = H160::from_str("1000000000000000000000000000000000000004").unwrap();
+		let substrate_addr = <Test as Config>::AddressMapping::into_account_id(evm_addr);
+
+		// Seed account
+		let _ = <Test as Config>::Currency::deposit_creating(&substrate_addr, 100);
+		assert_eq!(Balances::free_balance(&substrate_addr), 100);
+
+		// Burn 5 units as gas-fees
+		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), ten_units_imbalance(&evm_addr));
+		assert_eq!(Balances::free_balance(&substrate_addr), 95);
+
+		// Add 3 beneficiaries
+		let evm_addr_beneficiary_1 = H160::from_str("2000000000000000000000000000000000000001").unwrap();
+		let substrate_addr_beneficiary_1 = <Test as Config>::AddressMapping::into_account_id(evm_addr_beneficiary_1);
+		EVM::add_beneficiary(
+			Origin::root(),
+			evm_addr_beneficiary_1,
+		);
+		let evm_addr_beneficiary_2 = H160::from_str("2000000000000000000000000000000000000002").unwrap();
+		let substrate_addr_beneficiary_2 = <Test as Config>::AddressMapping::into_account_id(evm_addr_beneficiary_2);
+		EVM::add_beneficiary(
+			Origin::root(),
+			evm_addr_beneficiary_2,
+		);
+		let evm_addr_beneficiary_3 = H160::from_str("2000000000000000000000000000000000000003").unwrap();
+		let substrate_addr_beneficiary_3 = <Test as Config>::AddressMapping::into_account_id(evm_addr_beneficiary_3);
+		EVM::add_beneficiary(
+			Origin::root(),
+			evm_addr_beneficiary_3,
+		);
+		assert_eq!(<BenefitCount<Test>>::get(), 3);
+
+		// Charge 5 units to beneficiary_1 as license-fee
+		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), ten_units_imbalance(&evm_addr));
+		assert_eq!(Balances::free_balance(&substrate_addr), 90);
+		assert_eq!(Balances::free_balance(&substrate_addr_beneficiary_1), 5);
+
+		// Charge 5 units to beneficiary_2 as license-fee
+		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), ten_units_imbalance(&evm_addr));
+		assert_eq!(Balances::free_balance(&substrate_addr), 85);
+		assert_eq!(Balances::free_balance(&substrate_addr_beneficiary_2), 5);
+
+		// Charge 5 units to beneficiary_3 as license-fee
+		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), ten_units_imbalance(&evm_addr));
+		assert_eq!(Balances::free_balance(&substrate_addr), 80);
+		assert_eq!(Balances::free_balance(&substrate_addr_beneficiary_3), 5);
+
+		// Charge 5 units to beneficiary_1 as license-fee
+		<<Test as Config>::OnChargeTransaction as OnChargeEVMTransaction<Test>>::correct_and_deposit_fee(&evm_addr, U256::from(5), ten_units_imbalance(&evm_addr));
+		assert_eq!(Balances::free_balance(&substrate_addr), 75);
+		assert_eq!(Balances::free_balance(&substrate_addr_beneficiary_1), 10);
+
+		// Delete one beneficiary with index 2
+		EVM::delete_beneficiary(
+			Origin::root(),
+			2,
+		);
+		assert_eq!(<BenefitCount<Test>>::get(), 2);
 	});
 }
 

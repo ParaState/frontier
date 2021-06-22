@@ -151,13 +151,34 @@ pub mod pallet {
 
 		/// Set the benefit address for charge licence fee
 		#[pallet::weight(0)]
-		pub fn set_beneficiacry(
+		pub fn add_beneficiary(
 			origin: OriginFor<T>,
 			address: H160,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
-			<BenefitAddr<T>>::mutate(|beneficiacry| *beneficiacry = address);
-			Self::deposit_event(Event::BenefitAddrSet(address));
+			<BenefitAddreses<T>>::insert(<BenefitCount<T>>::get(), address);
+			<BenefitCount<T>>::mutate(|count| *count += 1);
+			Self::deposit_event(Event::BenefitAddrAdded(address));
+			Ok(().into())
+		}
+
+		/// Delete the benefit address by index
+		#[pallet::weight(0)]
+		pub fn delete_beneficiary(
+			origin: OriginFor<T>,
+			index: u32,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			if <BenefitCount<T>>::get() <= index {
+				Self::deposit_event(Event::BenefitAddrDeleteFailed(index));
+			}
+			else {
+				<BenefitCount<T>>::mutate(|count| *count -= 1);
+				<BenefitAddreses<T>>::swap(index, <BenefitCount<T>>::get());
+				let address = <BenefitAddreses<T>>::get(<BenefitCount<T>>::get());
+				<BenefitAddreses<T>>::remove(<BenefitCount<T>>::get());
+				Self::deposit_event(Event::BenefitAddrDeleted(index, address));
+			}
 			Ok(().into())
 		}
 
@@ -350,8 +371,12 @@ pub mod pallet {
 		EthAddrSet((T::AccountId, H160)),
 		/// Ethereum Reward to miner fail
 		EthRewardFailed(H160),
-		/// Setup the etherem address for gas fee beneficiacry
-		BenefitAddrSet(H160),
+		/// Add the etherem address for charge license fee
+		BenefitAddrAdded(H160),
+		/// Delete beneficiary by index
+		BenefitAddrDeleted(u32, H160),
+		/// Delete beneficiary fail with wrong index
+		BenefitAddrDeleteFailed(u32),
 		/// Ethereum events from contracts.
 		Log(Log),
 		/// A contract has been created at given \[address\].
@@ -392,6 +417,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
 		pub accounts: std::collections::BTreeMap<H160, GenesisAccount>,
+		pub beneficiaries: Vec<H160>,
 	}
 
 	#[cfg(feature = "std")]
@@ -399,6 +425,7 @@ pub mod pallet {
 		fn default() -> Self {
 			Self {
 				accounts: Default::default(),
+				beneficiaries: Default::default(),
 			}
 		}
 	}
@@ -426,6 +453,11 @@ pub mod pallet {
 					<AccountStorages<T>>::insert(address, index, value);
 				}
 			}
+			for address in &self.beneficiaries {
+				<BenefitAddreses<T>>::insert(<BenefitCount<T>>::get(), address);
+				<BenefitCount<T>>::mutate(|count| *count += 1);
+			}
+			<NextBenefitIndex<T>>::mutate(|next| *next = 0);
 		}
 	}
 
@@ -434,8 +466,16 @@ pub mod pallet {
 	pub type EthAddrOf<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, H160>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn benefit_count)]
+	pub type BenefitCount<T: Config> = StorageValue<_, u32, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn next_benefit)]
+	pub type NextBenefitIndex<T: Config> = StorageValue<_, u32, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn benefit_addr)]
-	pub type BenefitAddr<T: Config> = StorageValue<_, H160, ValueQuery>;
+	pub type BenefitAddreses<T: Config> = StorageMap<_, Twox64Concat, u32, H160, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn account_codes)]
@@ -747,10 +787,20 @@ where
 			// that case we don't refund anything.
 			let refund_imbalance = C::deposit_into_existing(&account_id, refund_amount)
 				.unwrap_or_else(|_| C::PositiveImbalance::zero());
-			// merge the imbalance caused by paying the fees and refunding parts of it again.
 
-			let benefit_account = T::AddressMapping::into_account_id(<BenefitAddr<T>>::get());
-			C::deposit_creating(&benefit_account, corrected_fee.low_u128().unique_saturated_into());
+			if <BenefitCount<T>>::get() == 0 {
+				// merge the imbalance caused by paying the fees and refunding parts of it again.
+				let adjusted_paid = paid
+					.offset(refund_imbalance)
+					.map_err(|_| Error::<T>::BalanceLow)?;
+				OU::on_unbalanced(adjusted_paid);
+			}
+			else {
+				let address = <BenefitAddreses<T>>::get(<NextBenefitIndex<T>>::get() % <BenefitCount<T>>::get());
+				let benefit_account = T::AddressMapping::into_account_id(address);
+				<NextBenefitIndex<T>>::mutate(|next| *next = (*next + 1) % <BenefitCount<T>>::get());
+				C::deposit_creating(&benefit_account, corrected_fee.low_u128().unique_saturated_into());
+			}
 		}
 		Ok(())
 	}
