@@ -155,6 +155,7 @@ fn testnet_genesis(
 			storage: Default::default(),
 		}
 	);
+
 	GenesisConfig {
 		frame_system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -185,6 +186,7 @@ fn testnet_genesis(
 		},
 		pallet_vm: EVMConfig {
 			accounts: vm_genesis,
+			beneficiaries: vec![],
 		},
 		pallet_ethereum: EthereumConfig {},
 		pallet_dynamic_fee: Default::default(),
