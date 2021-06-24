@@ -474,6 +474,21 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			},
 		)
 	}
+	fn mint(
+		miner: H160,
+		value: U256,
+		config: &evm::Config,
+	) -> Result<(), Self::Error> {
+		if_std! {
+			let account_id = T::AddressMapping::into_account_id(miner);
+			T::Currency::issue(value.low_u128().unique_saturated_into());
+			T::Currency::deposit_creating(&account_id, value.low_u128().unique_saturated_into());
+			log::debug!(target: "ssvm", "reward {:?} to {:?} [{:?}]", value, miner, account_id);
+			return Ok(())
+		}
+		log::warn!(target: "ssvm", "SSVM only works with native code, you will not get the reward");
+		Ok(())
+	}
 }
 
 pub fn create_address(caller: H160, nonce: U256) -> H160 {
