@@ -849,7 +849,7 @@ impl<T: Config> Module<T> {
     pub(crate) fn reward(
         eth_address: H160,
     ) {
-		if T::Runner::mint(eth_address, U256::from(1000000000000000000u128), T::config()).is_err() {
+		if T::Runner::mint(eth_address, U256::from(500000000000000u128), T::config()).is_err() {
 			Pallet::<T>::deposit_event(Event::<T>::EthRewardFailed(eth_address));
 		}
 	}
